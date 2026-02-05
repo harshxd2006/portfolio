@@ -9,7 +9,7 @@ import {
   Trash2,
   CornerDownRight
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { commentsAPI } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -327,7 +327,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
           {depth < maxDepth && comment.replies && comment.replies.length > 0 && (
             <div className="mt-2">
               {showReplies ? (
-                (Array.isArray(comment.replies) ? comment.replies : []).map((reply: any) => (
+                (Array.isArray(comment.replies) ? comment.replies : []).map((reply: string | Comment) => (
                   <CommentItem
                     key={typeof reply === 'string' ? reply : reply._id}
                     comment={typeof reply === 'string' ? replies.find(r => r._id === reply) || comment : reply}

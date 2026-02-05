@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, typ
 import { authAPI } from '@/services/api';
 import type { User, AuthState } from '@/types';
 
-interface AuthContextType extends AuthState {
+export interface AuthContextType extends AuthState {
   login: (token: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUser: (userData: Partial<User>) => Promise<void>;
@@ -91,8 +91,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ...prev,
         user: response.data.user,
       }));
-    } catch (error) {
-      console.error('Refresh user error:', error);
+    } catch {
+      // Ignore errors during refresh
     }
   }, []);
 
@@ -111,12 +111,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+
 
 

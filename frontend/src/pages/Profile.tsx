@@ -10,7 +10,7 @@ import {
   Edit,
   Share2
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { usersAPI, postsAPI } from '@/services/api';
 import PostCard from '@/components/posts/PostCard';
 import { Button } from '@/components/ui/button';

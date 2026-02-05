@@ -34,7 +34,7 @@ const PostDetail: React.FC = () => {
     fetchPost();
   }, [id, navigate]);
 
-  const handleVote = (_postId: string, voteType: 'up' | 'down' | null) => {
+  const handleVote = (voteType: 'up' | 'down' | null) => {
     if (post) {
       setPost({ ...post, userVote: voteType });
     }

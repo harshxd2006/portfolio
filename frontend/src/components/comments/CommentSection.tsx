@@ -87,7 +87,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
   };
 
   const handleReply = async (parentCommentId: string, content: string) => {
-    const response = await commentsAPI.create({
+    await commentsAPI.create({
       postId,
       content,
       parentCommentId,
