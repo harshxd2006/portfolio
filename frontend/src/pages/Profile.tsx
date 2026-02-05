@@ -1,3 +1,4 @@
+// frontend/src/pages/Profile.tsx
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
@@ -48,11 +49,10 @@ const Profile: React.FC = () => {
         setProfile(response.data.user);
         setStats(response.data.user.stats);
 
-        // Check if current user is following this profile
         if (currentUser && response.data.user.followers) {
           setIsFollowing(
             response.data.user.followers.some(
-              (f) => (typeof f === 'string' ? f : f._id) === currentUser._id
+              (follower: string | User) => (typeof follower === 'string' ? follower : follower._id) === currentUser._id
             )
           );
         }
@@ -176,12 +176,9 @@ const Profile: React.FC = () => {
         Back
       </Button>
 
-      {/* Profile Header */}
       <div className="relative">
-        {/* Cover Image */}
         <div className="h-48 w-full bg-gradient-to-r from-orange-400 via-red-500 to-pink-500 rounded-lg" />
         
-        {/* Profile Info */}
         <div className="px-4 pb-4">
           <div className="flex flex-col md:flex-row md:items-end -mt-12 mb-4">
             <Avatar className="h-24 w-24 border-4 border-background">
@@ -217,12 +214,10 @@ const Profile: React.FC = () => {
             </div>
           </div>
 
-          {/* Bio */}
           {profile.bio && (
             <p className="text-foreground mb-4">{profile.bio}</p>
           )}
 
-          {/* Meta Info */}
           <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-4">
             {profile.location && (
               <div className="flex items-center">
@@ -247,7 +242,6 @@ const Profile: React.FC = () => {
             </div>
           </div>
 
-          {/* Stats */}
           <div className="flex flex-wrap gap-6">
             <div className="flex items-center space-x-1">
               <span className="font-bold">{stats?.karma || profile.karma}</span>
@@ -263,7 +257,6 @@ const Profile: React.FC = () => {
             </Link>
           </div>
 
-          {/* Skills */}
           {profile.skills && profile.skills.length > 0 && (
             <div className="mt-4">
               <div className="flex flex-wrap gap-2">
@@ -278,7 +271,6 @@ const Profile: React.FC = () => {
         </div>
       </div>
 
-      {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
         <TabsList className="w-full justify-start">
           <TabsTrigger value="posts">

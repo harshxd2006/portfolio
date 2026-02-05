@@ -1,6 +1,7 @@
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
+// frontend/src/services/api.ts
+import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
+import type { User, PostFormData, CommentFormData } from '@/types';
 
-// Create axios instance
 const api: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   headers: {
@@ -9,7 +10,6 @@ const api: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
-// Request interceptor to add auth token
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('token');
@@ -23,12 +23,10 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle errors
 api.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to login
       localStorage.removeItem('token');
       window.location.href = '/login';
     }
@@ -36,7 +34,6 @@ api.interceptors.response.use(
   }
 );
 
-// Auth API
 export const authAPI = {
   login: (token: string) => {
     localStorage.setItem('token', token);
@@ -57,7 +54,6 @@ export const authAPI = {
   },
 };
 
-// Posts API
 export const postsAPI = {
   getAll: (params?: { page?: number; limit?: number; sortBy?: string }) =>
     api.get('/posts', { params }),
@@ -74,7 +70,6 @@ export const postsAPI = {
     api.get(`/posts/search/${query}`, { params }),
 };
 
-// Comments API
 export const commentsAPI = {
   getByPost: (postId: string, params?: { page?: number; limit?: number; sortBy?: string }) =>
     api.get(`/comments/post/${postId}`, { params }),
@@ -90,7 +85,6 @@ export const commentsAPI = {
     api.get(`/comments/user/${userId}`, { params }),
 };
 
-// Users API
 export const usersAPI = {
   getByUsername: (username: string) => api.get(`/users/profile/${username}`),
   getById: (id: string) => api.get(`/users/${id}`),
@@ -103,8 +97,5 @@ export const usersAPI = {
     api.get(`/users/search/${query}`, { params }),
   getLeaderboard: (limit?: number) => api.get('/users/leaderboard/karma', { params: { limit } }),
 };
-
-// Import types
-import type { User, PostFormData, CommentFormData } from '@/types';
 
 export default api;

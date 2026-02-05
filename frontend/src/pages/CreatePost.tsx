@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Image, Link, Type, Briefcase } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuth } from '@/contexts/AuthContext';
 import { postsAPI } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import type { PostFormData } from '@/types';
+import { AxiosError } from 'axios';
 
 const CreatePost: React.FC = () => {
   const navigate = useNavigate();
@@ -91,8 +92,9 @@ const CreatePost: React.FC = () => {
       
       toast.success('Post created successfully!');
       navigate(`/post/${response.data.post._id}`);
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create post');
+    } catch (error) {
+      const axiosError = error as AxiosError<{ message?: string }>;
+      toast.error(axiosError.response?.data?.message || 'Failed to create post');
     } finally {
       setIsSubmitting(false);
     }
@@ -116,7 +118,7 @@ const CreatePost: React.FC = () => {
         
         <CardContent className="space-y-6">
           {/* Post Type Tabs */}
-          <Tabs value={postType} onValueChange={(v) => setPostType(v as 'text' | 'link' | 'image' | 'portfolio')}>
+          <Tabs value={postType} onValueChange={(v) => setPostType(v as typeof postType)}>
             <TabsList className="grid grid-cols-4">
               <TabsTrigger value="text">
                 <Type className="mr-2 h-4 w-4" />

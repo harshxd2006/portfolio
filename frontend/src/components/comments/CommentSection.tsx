@@ -1,6 +1,7 @@
+// frontend/src/components/comments/CommentSection.tsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { MessageSquare, SortAsc, SortDesc } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { commentsAPI } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -60,7 +61,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
 
   useEffect(() => {
     fetchComments(true);
-  }, [sortBy, fetchComments]);
+  }, [postId, sortBy]); // Removed fetchComments from deps
 
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
@@ -87,13 +88,12 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
   };
 
   const handleReply = async (parentCommentId: string, content: string) => {
-    await commentsAPI.create({
+    const response = await commentsAPI.create({
       postId,
       content,
       parentCommentId,
     });
 
-    // Update the parent comment's replies
     setComments(prev =>
       prev.map(comment => {
         if (comment._id === parentCommentId) {
@@ -117,7 +117,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
         if (comment._id === commentId) {
           return { ...comment, ...response.data.comment };
         }
-        // Also check in replies
         if (comment.replies) {
           return {
             ...comment,
@@ -139,15 +138,16 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
         if (comment._id === commentId) {
           return { ...comment, isDeleted: true, content: '[deleted]' };
         }
-        // Also check in replies
         if (comment.replies) {
           return {
             ...comment,
-            replies: comment.replies.map((reply: string | Comment) =>
-              (typeof reply === 'string' ? reply : reply._id) === commentId
-                ? { ...reply, isDeleted: true, content: '[deleted]' }
-                : reply
-            ),
+            replies: comment.replies.map((reply: string | Comment) => {
+              if (typeof reply === 'string') return reply;
+              if (reply._id === commentId) {
+                return { ...reply, isDeleted: true, content: '[deleted]' };
+              }
+              return reply;
+            }),
           };
         }
         return comment;
@@ -164,7 +164,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
     <div className="mt-6">
       <Separator className="mb-6" />
       
-      {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold flex items-center">
           <MessageSquare className="mr-2 h-5 w-5" />
@@ -192,7 +191,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
         </Select>
       </div>
 
-      {/* New Comment Form */}
       {isAuthenticated && (
         <div className="mb-6 space-y-3">
           <Textarea
@@ -213,7 +211,6 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
         </div>
       )}
 
-      {/* Comments List */}
       <div className="space-y-0">
         {isLoading && comments.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
