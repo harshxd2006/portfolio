@@ -1,11 +1,11 @@
-// frontend/src/hooks/useAuth.ts
 import { useContext } from 'react';
-import { AuthContext, type AuthContextType } from '@/contexts/AuthContext';
+import { AuthContext } from '../contexts/authContext';
+import type { AuthContextType } from '@/types';
 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
+  return context as AuthContextType;
 };

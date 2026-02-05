@@ -1,9 +1,9 @@
 // frontend/src/services/api.ts
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig, type AxiosResponse } from 'axios';
-import type { User, PostFormData, CommentFormData } from '@/types';
+import type { User, PostFormData, CommentFormData } from '../types';
 
 const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000/api',
   headers: {
     'Content-Type': 'application/json',
   },

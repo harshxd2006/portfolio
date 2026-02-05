@@ -13,7 +13,7 @@ import {
   Briefcase,
   MessageSquare
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -50,11 +50,18 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
   };
 
   const handleLogout = async () => {
-    await logout();
-    navigate('/');
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Still navigate to home even if logout API fails
+      navigate('/');
+    }
   };
 
   const getInitials = (name: string) => {
+    if (!name) return 'U';
     return name
       .split(' ')
       .map(n => n[0])
@@ -150,7 +157,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user?.avatar} alt={user?.displayName} />
-                      <AvatarFallback>{user?.displayName ? getInitials(user.displayName) : 'U'}</AvatarFallback>
+                      <AvatarFallback>{getInitials(user?.displayName || '')}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
@@ -158,11 +165,11 @@ const Header: React.FC<HeaderProps> = ({ onMenuToggle }) => {
                   <div className="flex items-center gap-2 p-2">
                     <Avatar className="h-8 w-8">
                       <AvatarImage src={user?.avatar} alt={user?.displayName} />
-                      <AvatarFallback>{user?.displayName ? getInitials(user.displayName) : 'U'}</AvatarFallback>
+                      <AvatarFallback>{getInitials(user?.displayName || '')}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                      <p className="text-sm font-medium">{user?.displayName}</p>
-                      <p className="text-xs text-muted-foreground">u/{user?.username}</p>
+                      <p className="text-sm font-medium">{user?.displayName || 'User'}</p>
+                      <p className="text-xs text-muted-foreground">@{user?.username || 'username'}</p>
                     </div>
                   </div>
                   <DropdownMenuSeparator />

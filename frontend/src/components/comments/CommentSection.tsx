@@ -1,5 +1,5 @@
 // frontend/src/components/comments/CommentSection.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MessageSquare, SortAsc, SortDesc } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { commentsAPI } from '@/services/api';
@@ -32,36 +32,49 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchComments = useCallback(async (reset = false) => {
+  useEffect(() => {
+    const fetchComments = async () => {
+      try {
+        setIsLoading(true);
+        const response = await commentsAPI.getByPost(postId, {
+          page: 1,
+          limit: 20,
+          sortBy,
+        });
+
+        const newComments = response.data.comments;
+        setComments(newComments);
+        setPage(1);
+        setHasMore(response.data.pagination.hasMore);
+      } catch {
+        toast.error('Failed to load comments');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchComments();
+  }, [postId, sortBy]);
+
+  const loadMoreComments = async () => {
     try {
       setIsLoading(true);
-      const currentPage = reset ? 1 : page;
       const response = await commentsAPI.getByPost(postId, {
-        page: currentPage,
+        page: page + 1,
         limit: 20,
         sortBy,
       });
 
       const newComments = response.data.comments;
-      
-      if (reset) {
-        setComments(newComments);
-        setPage(1);
-      } else {
-        setComments(prev => [...prev, ...newComments]);
-      }
-      
+      setComments(prev => [...prev, ...newComments]);
+      setPage(prev => prev + 1);
       setHasMore(response.data.pagination.hasMore);
     } catch {
       toast.error('Failed to load comments');
     } finally {
       setIsLoading(false);
     }
-  }, [postId, sortBy, page]);
-
-  useEffect(() => {
-    fetchComments(true);
-  }, [postId, sortBy]); // Removed fetchComments from deps
+  };
 
   const handleSubmitComment = async () => {
     if (!newComment.trim()) return;
@@ -99,7 +112,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
         if (comment._id === parentCommentId) {
           return {
             ...comment,
-            replies: [...(comment.replies || []), response.data.comment],
+            replies: [...comment.replies, response.data.comment],
           };
         }
         return comment;
@@ -117,10 +130,10 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
         if (comment._id === commentId) {
           return { ...comment, ...response.data.comment };
         }
-        if (comment.replies) {
+        if (Array.isArray(comment.replies)) {
           return {
             ...comment,
-            replies: comment.replies.map((reply: string | Comment) =>
+            replies: comment.replies.map((reply) =>
               (typeof reply === 'string' ? reply : reply._id) === commentId
                 ? response.data.comment
                 : reply
@@ -138,26 +151,17 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
         if (comment._id === commentId) {
           return { ...comment, isDeleted: true, content: '[deleted]' };
         }
-        if (comment.replies) {
-          return {
-            ...comment,
-            replies: comment.replies.map((reply: string | Comment) => {
-              if (typeof reply === 'string') return reply;
-              if (reply._id === commentId) {
-                return { ...reply, isDeleted: true, content: '[deleted]' };
-              }
-              return reply;
-            }),
-          };
-        }
-        return comment;
+        return {
+          ...comment,
+          replies: comment.replies.map((reply) => {
+            if (reply._id === commentId) {
+              return { ...reply, isDeleted: true, content: '[deleted]' };
+            }
+            return reply;
+          }),
+        };
       })
     );
-  };
-
-  const loadMore = () => {
-    setPage(prev => prev + 1);
-    fetchComments();
   };
 
   return (
@@ -238,7 +242,7 @@ const CommentSection: React.FC<CommentSectionProps> = ({ postId, commentCount = 
               <div className="text-center py-4">
                 <Button 
                   variant="outline" 
-                  onClick={loadMore}
+                  onClick={loadMoreComments}
                   disabled={isLoading}
                 >
                   {isLoading ? 'Loading...' : 'Load More Comments'}

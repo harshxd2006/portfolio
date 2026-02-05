@@ -19,6 +19,7 @@ export interface User {
   updatedAt: string;
   followerCount?: number;
   followingCount?: number;
+  stats?: UserStats; // Added missing property
 }
 
 export interface UserStats {
@@ -26,7 +27,7 @@ export interface UserStats {
   commentCount: number;
   followerCount: number;
   followingCount: number;
-  karma: number;
+  karma: number; // Added missing property
 }
 
 // Post Types
@@ -47,7 +48,7 @@ export interface Post {
   views: number;
   isPinned: boolean;
   isDeleted: boolean;
-  isEdited?: boolean;
+  isEdited: boolean; // Changed from optional to required
   createdAt: string;
   updatedAt: string;
   voteScore?: number;
@@ -62,7 +63,7 @@ export interface Comment {
   author: User;
   content: string;
   parentComment: string | Comment | null;
-  replies: string[] | Comment[];
+  replies: Comment[];
   votes: {
     upvotes: string[];
     downvotes: string[];
@@ -82,6 +83,13 @@ export interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+}
+
+export interface AuthContextType extends AuthState {
+  login: (token: string) => Promise<void>;
+  logout: () => Promise<void>;
+  updateUser: (userData: Partial<User>) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 export interface LoginCredentials {

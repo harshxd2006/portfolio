@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { postsAPI } from '@/services/api';
 import PostCard from '@/components/posts/PostCard';
@@ -21,46 +21,55 @@ const Home: React.FC = () => {
   
   const sortBy = searchParams.get('sort') || 'new';
 
-  const fetchPosts = useCallback(async (reset = false) => {
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true);
+        const response = await postsAPI.getAll({
+          page: 1,
+          limit: 10,
+          sortBy,
+        });
+
+        const newPosts = response.data.posts;
+        setPosts(newPosts);
+        setPage(2);
+        setHasMore(response.data.pagination.hasMore);
+      } catch {
+        toast.error('Failed to load posts');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, [sortBy]);
+
+  const loadMorePosts = async () => {
     try {
       setIsLoading(true);
-      const currentPage = reset ? 1 : page;
-      
       const response = await postsAPI.getAll({
-        page: currentPage,
+        page,
         limit: 10,
         sortBy,
       });
 
       const newPosts = response.data.posts;
-      
-      if (reset) {
-        setPosts(newPosts);
-        setPage(2);
-      } else {
-        setPosts(prev => [...prev, ...newPosts]);
-        setPage(prev => prev + 1);
-      }
-      
+      setPosts(prev => [...prev, ...newPosts]);
+      setPage(prev => prev + 1);
       setHasMore(response.data.pagination.hasMore);
     } catch {
       toast.error('Failed to load posts');
     } finally {
       setIsLoading(false);
     }
-    }
-  }, [sortBy, page]);
-
-  useEffect(() => {
-    fetchPosts(true);
-  }, [sortBy, fetchPosts]);
+  };
 
   const handleSortChange = (value: string) => {
     setSearchParams({ sort: value });
   };
 
   const handleVote = (postId: string, voteType: 'up' | 'down' | null) => {
-    // Update the post in the list
     setPosts(prev =>
       prev.map(post => {
         if (post._id === postId) {
@@ -129,7 +138,7 @@ const Home: React.FC = () => {
             {hasMore && (
               <div className="text-center py-4">
                 <Button
-                  onClick={() => fetchPosts()}
+                  onClick={loadMorePosts}
                   disabled={isLoading}
                   variant="outline"
                 >
