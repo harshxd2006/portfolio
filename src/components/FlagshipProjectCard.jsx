@@ -25,7 +25,7 @@ export default function FlagshipProjectCard({
         {name}
       </h3>
 
-      <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-white/10 pt-3 [scrollbar-width:none] md:overflow-hidden [&::-webkit-scrollbar]:hidden">
+      <div className="mt-4 min-h-0 w-full flex-1 border-t border-white/10 pt-3">
         {architecture.map((row) => (
           <SpecRow key={row.label} label={row.label} detail={row.detail} />
         ))}

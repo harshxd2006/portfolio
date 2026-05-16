@@ -12,7 +12,7 @@ export default function SectionShell({ id, children, className = '', align = 'ce
           className="pointer-events-none absolute inset-0 -mx-4 bg-[radial-gradient(ellipse_55%_50%_at_50%_44%,rgba(0,0,0,0.3)_0%,rgba(0,0,0,0.5)_50%,transparent_85%)] md:-mx-6"
           aria-hidden="true"
         />
-        <div className="relative z-10">{children}</div>
+        <div className="relative z-10 flex min-h-0 flex-1 w-full flex-col">{children}</div>
       </div>
     </section>
   );

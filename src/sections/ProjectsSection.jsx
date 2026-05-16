@@ -19,7 +19,7 @@ export default function ProjectsSection() {
           </RevealItem>
         </Reveal>
 
-        <Reveal className="grid min-h-0 flex-1 gap-3 lg:grid-cols-2 lg:gap-4">
+        <Reveal className="grid min-h-0 flex-1 auto-rows-max gap-3 overflow-y-auto no-scrollbar pb-8 lg:auto-rows-fr lg:grid-cols-2 lg:gap-4 lg:overflow-visible lg:pb-0">
           {FLAGSHIP_PROJECTS.map((project) => (
             <RevealItem key={project.name} className="min-h-0">
               <FlagshipProjectCard {...project} />

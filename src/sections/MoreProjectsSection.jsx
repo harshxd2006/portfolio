@@ -7,7 +7,7 @@ import { MORE_PROJECTS } from '../constants/projectsData';
 export default function MoreProjectsSection() {
   return (
     <SectionShell id="more-projects">
-      <Reveal>
+      <Reveal className="flex min-h-0 flex-1 flex-col">
         <RevealItem>
           <SectionHeading
             badge={4}
@@ -17,7 +17,7 @@ export default function MoreProjectsSection() {
           />
         </RevealItem>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid min-h-0 flex-1 auto-rows-max gap-4 overflow-y-auto no-scrollbar pb-8 md:auto-rows-fr md:grid-cols-2 md:overflow-visible md:pb-0">
           {MORE_PROJECTS.map((project) => (
             <RevealItem key={project.name}>
               <MoreProjectCard {...project} />
