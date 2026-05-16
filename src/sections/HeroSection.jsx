@@ -42,7 +42,7 @@ export default function HeroSection({ onNavigate }) {
 
           <motion.p
             variants={item}
-            className="mt-8 max-w-[480px] font-dm text-sm font-light leading-relaxed text-white/45"
+            className="mt-8 max-w-[480px] font-dm text-sm font-light leading-relaxed text-white/80"
           >
             AI systems, full-stack platforms &amp; robotics — from hackathon podiums to
             production.

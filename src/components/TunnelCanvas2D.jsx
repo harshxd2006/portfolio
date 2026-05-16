@@ -1,51 +1,17 @@
 import { useEffect, useRef } from 'react';
-import { clamp, drawGlowStroke, lerp, project3D } from '../utils/tunnelMath';
 
-const DEPTH = 2200;
-const BASE_FLOW = 4.2;
-const BOOST_FLOW = 12;
-const BOOST_MS = 900;
+const TUNNEL_LENGTH = 480;
 
-function createStreaks(count, spread, phaseOffset = 0) {
-  return Array.from({ length: count }, (_, i) => ({
-    lane: (i / (count - 1 || 1)) * 2 - 1,
-    spread,
-    phase: phaseOffset + i * 1.37,
-    speed: 0.7 + (i % 5) * 0.11,
-    width: spread > 1 ? 1 : 0.55 + (i % 3) * 0.15,
-    offset: (Math.random() - 0.5) * 0.4,
-  }));
+function lerp(a, b, t) {
+  return a + (b - a) * t;
 }
 
-function buildStreakPath3D(streak, travel, time, mouse, width, height) {
-  const points = [];
-  const mousePullX = mouse.active ? (mouse.x - width * 0.5) * 0.0001 : 0;
-  const mousePullY = mouse.active ? (mouse.y - height * 0.5) * 0.00008 : 0;
+function clamp(v, min, max) {
+  return Math.min(max, Math.max(min, v));
+}
 
-  for (let i = 0; i < 9; i += 1) {
-    const u = i / 8;
-    let z = u * DEPTH + streak.offset * 200;
-    z = ((z - travel * streak.speed) % DEPTH + DEPTH) % DEPTH;
-
-    const depthFactor = 1 - z / DEPTH;
-    const converge = u * u;
-    const radius = width * (0.12 + streak.spread * 0.09) * lerp(0.9, 0.25, converge);
-    const angle =
-      streak.phase + time * 0.22 * streak.speed + u * 4.2 + Math.sin(time * 0.35 + streak.lane * 2) * 0.55;
-    const wave =
-      Math.sin(time * 0.28 + u * 6 + streak.phase) * radius * 0.22 +
-      Math.cos(time * 0.19 + streak.lane * 3) * radius * 0.1;
-
-    const x = Math.cos(angle) * radius + wave + streak.lane * width * 0.06 + mousePullX * depthFactor * 60;
-    const y =
-      Math.sin(angle * 0.85) * radius * 0.42 +
-      Math.sin(time * 0.31 + u * 3) * radius * 0.08 +
-      mousePullY * depthFactor * 50;
-
-    points.push({ x, y, z, depthFactor });
-  }
-
-  return points;
+function mod(n, m) {
+  return ((n % m) + m) % m;
 }
 
 export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
@@ -64,29 +30,46 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
     const canvas = canvasRef.current;
     if (!canvas) return undefined;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false });
     let w = 0;
     let h = 0;
     let raf = 0;
 
     const state = {
-      travel: 0,
-      flow: BASE_FLOW,
-      targetFlow: BASE_FLOW,
-      boostUntil: 0,
+      actualSpeed: 0.25,
+      targetSpeed: 0.25,
+      warpUntil: 0,
       time: 0,
       mouse: { x: 0, y: 0, active: false },
       smoothMouse: { x: 0, y: 0 },
-      primary: createStreaks(10, 1.1, 0),
-      secondary: createStreaks(14, 1.7, 4),
+      rotation: 0,
     };
 
     apiRef.current = {
       triggerWarp: () => {
-        state.boostUntil = performance.now() + BOOST_MS;
-        state.targetFlow = BOOST_FLOW;
+        state.warpUntil = performance.now() + 900;
+        state.targetSpeed = 2.2;
+        state.actualSpeed = 2.2; // spike immediately
       },
     };
+
+    // Performance improvement: significantly reduced particle count for Canvas 2D fallback 
+    // to guarantee smooth 60fps even on weak integrated graphics.
+    const particles = [];
+    for (let z = 0; z >= -TUNNEL_LENGTH; z -= 16) {
+      const rBase = 12 + Math.random() * 6;
+      for (let i = 0; i < 24; i++) {
+        const angle = (i / 24) * Math.PI * 2;
+        const r = rBase + (Math.random() - 0.5) * 1.5;
+        particles.push({ r, angle, zBase: z, offset: 0 });
+      }
+    }
+    for (let i = 0; i < 300; i++) {
+      const r = Math.random() * 11;
+      const angle = Math.random() * Math.PI * 2;
+      const z = -Math.random() * TUNNEL_LENGTH;
+      particles.push({ r, angle, zBase: z, offset: Math.random() * TUNNEL_LENGTH });
+    }
 
     const resize = () => {
       w = window.innerWidth;
@@ -100,43 +83,97 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
       state.smoothMouse = { x: w / 2, y: h / 2 };
     };
 
-    const render = () => {
-      state.time += 0.004;
-      const now = performance.now();
-      state.targetFlow = now < state.boostUntil ? BOOST_FLOW : BASE_FLOW;
-      state.flow = lerp(state.flow, state.targetFlow, 0.04);
-      state.travel = (state.travel + state.flow) % DEPTH;
+    let last = performance.now();
 
-      state.smoothMouse.x = lerp(state.smoothMouse.x, state.mouse.x, 0.06);
-      state.smoothMouse.y = lerp(state.smoothMouse.y, state.mouse.y, 0.06);
-      const mouse = { ...state.smoothMouse, active: state.mouse.active };
+    const render = (now) => {
+      const delta = Math.min((now - last) / 1000, 0.05);
+      last = now;
+
+      if (now > state.warpUntil) {
+        state.targetSpeed = 0.25;
+      }
+      state.actualSpeed = lerp(state.actualSpeed, state.targetSpeed, delta * 3.0);
+      const uWarp = Math.max(0, Math.min(1, (state.actualSpeed - 0.25) / (2.2 - 0.25)));
+
+      state.time += delta * state.actualSpeed * 60.0;
+      state.rotation += delta * 0.002 * 60.0; // Slower rotation
+
+      state.smoothMouse.x = lerp(state.smoothMouse.x, state.mouse.x, 0.05);
+      state.smoothMouse.y = lerp(state.smoothMouse.y, state.mouse.y, 0.05);
+      const mouseActive = state.mouse.active;
+
+      const shiftX = mouseActive ? (state.smoothMouse.x - w/2) * 0.8 : 0;
+      const shiftY = mouseActive ? (state.smoothMouse.y - h/2) * 0.8 : 0;
 
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, w, h);
-
-      const all = [
-        ...state.secondary.map((s) => ({ streak: s, dim: true })),
-        ...state.primary.map((s) => ({ streak: s, dim: false })),
-      ]
-        .map(({ streak, dim }) => {
-          const path3d = buildStreakPath3D(streak, state.travel, state.time, mouse, w, h);
-          const projected = path3d.map((p) => {
-            const pr = project3D(p.x, p.y, p.z, w, h);
-            return { x: pr.x, y: pr.y };
-          });
-          const avg = path3d.reduce((s, p) => s + p.depthFactor, 0) / (path3d.length || 1);
-          return { projected, avg, dim, width: streak.width };
-        })
-        .sort((a, b) => a.avg - b.avg);
-
       ctx.globalCompositeOperation = 'lighter';
-      all.forEach(({ projected, avg, dim, width: sw }) => {
-        if (projected.length < 2) return;
-        ctx.strokeStyle = dim ? 'rgba(90,143,173,0.5)' : 'rgba(142,202,230,0.7)';
-        drawGlowStroke(ctx, projected, avg, dim ? 0.4 * sw : 0.85 * sw);
-      });
-      ctx.globalCompositeOperation = 'source-over';
 
+      const cx = w / 2;
+      const cy = h / 2;
+
+      particles.forEach(p => {
+        const traveled = mod(p.zBase + state.time + p.offset, TUNNEL_LENGTH) - TUNNEL_LENGTH * 0.5;
+        
+        if (traveled >= 8) return; 
+
+        const zDist = 8 - traveled; 
+        if (zDist < 0.1) return;
+
+        const vDepth = 1.0 - Math.abs(traveled) / (TUNNEL_LENGTH * 0.5);
+        if (vDepth <= 0) return;
+
+        const totalAngle = p.angle + state.rotation;
+        const px = Math.cos(totalAngle) * p.r;
+        const py = Math.sin(totalAngle) * p.r;
+
+        const vEdge = clamp((p.r - 10.0) / 8.0, 0, 1);
+
+        const cr = lerp(255, 13, vEdge);
+        const cg = lerp(255, 56, vEdge);
+        const cb = lerp(255, 115, vEdge);
+
+        const tint = uWarp * 0.4;
+        const fr = Math.round(lerp(cr, 140, tint));
+        const fg = Math.round(lerp(cg, 209, tint));
+        const fb = Math.round(lerp(cb, 242, tint));
+
+        const scale = 300.0 / zDist;
+        const size2d = Math.max(0.5, 3.5 * scale * 0.05);
+        const alpha = vDepth * 0.9;
+
+        const depthFactor = clamp(1.0 - zDist / (TUNNEL_LENGTH * 0.5), 0, 1);
+        const screenX = cx - shiftX * depthFactor + px * scale;
+        const screenY = cy - shiftY * depthFactor + py * scale;
+
+        ctx.fillStyle = `rgba(${fr}, ${fg}, ${fb}, ${alpha})`;
+        // Performance improvement: fillRect is dramatically faster than arc/fill paths
+        ctx.fillRect(screenX - size2d, screenY - size2d, size2d * 2, size2d * 2);
+      });
+
+      // RINGS (14 evenly spaced LineLoop rings from the shader)
+      ctx.strokeStyle = 'rgba(26, 58, 92, 0.18)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 14; i++) {
+        const zOffset = (i / 14) * TUNNEL_LENGTH;
+        const ringZ = mod(zOffset + state.time, TUNNEL_LENGTH) - TUNNEL_LENGTH * 0.5;
+        
+        const zDist = 8 - ringZ;
+        if (zDist < 0.1 || ringZ >= 8) continue;
+        
+        const scale = 300.0 / zDist;
+        const radius2d = 14.0 * scale;
+        const depthFactor = clamp(1.0 - zDist / (TUNNEL_LENGTH * 0.5), 0, 1);
+        
+        const screenX = cx - shiftX * depthFactor;
+        const screenY = cy - shiftY * depthFactor;
+        
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, radius2d, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
       raf = requestAnimationFrame(render);
     };
 
@@ -163,7 +200,7 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
     <canvas
       ref={canvasRef}
       className="tunnel-canvas-host"
-      style={{ position: 'fixed', inset: 0, zIndex: 0 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 0, width: '100vw', height: '100vh' }}
       aria-hidden="true"
     />
   );

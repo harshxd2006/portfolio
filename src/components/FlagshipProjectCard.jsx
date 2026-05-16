@@ -18,7 +18,7 @@ export default function FlagshipProjectCard({
         ))}
       </div>
 
-      <p className="mb-1 font-dm text-[9px] uppercase tracking-[0.28em] text-white/40 md:text-[10px]">
+      <p className="mb-1 font-dm text-[9px] uppercase tracking-[0.28em] text-white/60 md:text-[10px]">
         {index} — {label}
       </p>
       <h3 className="font-syne text-2xl font-extrabold leading-none tracking-[-1px] text-white md:text-[36px]">
@@ -34,7 +34,7 @@ export default function FlagshipProjectCard({
       {achievements.length > 0 && (
         <div className="mt-3 shrink-0 space-y-1 border-t border-white/10 pt-3">
           {achievements.map((badge) => (
-            <p key={badge} className="font-dm text-[10px] font-light leading-snug text-white/55 md:text-xs">
+            <p key={badge} className="font-dm text-[10px] font-light leading-snug text-white/80 md:text-xs">
               {badge}
             </p>
           ))}
@@ -45,7 +45,7 @@ export default function FlagshipProjectCard({
         href={github}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-3 inline-flex w-fit shrink-0 items-center gap-1 font-dm text-[11px] text-white/70 transition-colors hover:text-white"
+        className="mt-3 inline-flex w-fit shrink-0 items-center gap-1 font-dm text-[11px] text-white/90 transition-colors hover:text-white"
       >
         View on GitHub ↗
       </a>

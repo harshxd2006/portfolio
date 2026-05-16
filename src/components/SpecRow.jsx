@@ -8,7 +8,7 @@ export default function SpecRow({ label, detail }) {
       >
         {'·'.repeat(40)}
       </span>
-      <span className="shrink-0 text-right font-dm text-xs text-white/35">{detail}</span>
+      <span className="shrink-0 text-right font-dm text-xs text-white/70">{detail}</span>
     </div>
   );
 }

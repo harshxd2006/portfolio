@@ -31,7 +31,7 @@ export default function Loader({ onComplete }) {
           />
         </svg>
         <span className="font-syne text-xl font-extrabold tracking-tight text-white">
-          harsh.ai
+          Loading...
         </span>
       </div>
     </motion.div>

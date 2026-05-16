@@ -1,17 +1,7 @@
 export default function Header({ onMenuOpen }) {
   return (
-    <header className="pointer-events-none fixed top-0 z-[100] flex w-full items-center justify-between px-8 py-6 md:px-10">
-      <a
-        href="#hero"
-        className="pointer-events-auto font-syne text-base font-extrabold tracking-tight text-white"
-        onClick={(e) => {
-          e.preventDefault();
-          document.getElementById('hero')?.scrollIntoView({ behavior: 'smooth' });
-        }}
-      >
-        harsh.ai
-      </a>
-
+    <header className="pointer-events-none fixed top-0 z-[100] flex w-full items-center justify-end px-8 py-6 md:px-10">
+      {/* Home link removed as requested */}
       <button
         type="button"
         aria-label="Open navigation menu"

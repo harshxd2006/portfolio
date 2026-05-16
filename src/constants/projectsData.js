@@ -12,8 +12,8 @@ export const FLAGSHIP_PROJECTS = [
       { label: 'Output', detail: 'Transparent risk report + roadmap' },
     ],
     achievements: [
-      '🏆 11th / 850+ teams — INNOVFEST 2026 FinTech',
-      '🏆 16th / 390+ teams — GDG HackCentrix 2025',
+      '11th / 850+ teams — INNOVFEST 2026 FinTech',
+      '16th / 390+ teams — GDG HackCentrix 2025',
     ],
     github: 'https://github.com/harshxd2006',
   },
@@ -40,11 +40,11 @@ export const MORE_PROJECTS = [
   {
     index: '03',
     label: 'AI TOOL DIRECTORY',
-    name: 'Project Nexus AI',
+    name: 'Stack AI',
     stack: ['React.js', 'Vercel'],
     description:
       'Discovery platform for AI tools by category with search and filter UX.',
-    link: 'https://nexus25-ai.vercel.app/',
+    link: 'https://stack-ai-26.vercel.app/',
   },
   {
     index: '04',
@@ -60,19 +60,19 @@ export const MORE_PROJECTS = [
 export const TIMELINE_ENTRIES = [
   {
     year: '2026',
-    title: '🏆 11th / 850+ — AI Hack Matrix INNOVFEST 2026',
+    title: '11th / 850+ — AI Hack Matrix INNOVFEST 2026',
     description:
       'CreditFlow — FinTech Category. Selected for offline Grand Finale at Chandigarh University. Competed against teams from IITs, NITs & IIITs nationwide.',
   },
   {
     year: '2025',
-    title: '🏆 16th / 390+ — GDG HackCentrix, Mathura',
+    title: '16th / 390+ — GDG HackCentrix, Mathura',
     description:
       'CreditFlow — privacy-first AI credit assessment platform for 400M unbanked Indians.',
   },
   {
     year: '2025',
-    title: '🥇 1st Place — Mecha Mayhem & Bowl the Derby',
+    title: '1st Place — Mecha Mayhem & Bowl the Derby',
     description:
       'RoboWeek 2025, NIT Hamirpur. Built winning combat bot from scratch in 24 hours.',
   },

@@ -8,7 +8,7 @@ export default function StackRow({ name, detail }) {
       >
         {'·'.repeat(72)}
       </span>
-      <span className="max-w-[9rem] shrink-0 text-right font-dm text-xs text-white/35 sm:max-w-none">
+      <span className="max-w-[9rem] shrink-0 text-right font-dm text-xs text-white/70 sm:max-w-none">
         {detail}
       </span>
     </div>
