@@ -17,9 +17,9 @@ export default function MoreProjectsSection() {
           />
         </RevealItem>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="flex snap-x snap-mandatory overflow-x-auto gap-4 pb-4 md:grid md:grid-cols-2 md:overflow-visible md:pb-0 md:snap-none [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {MORE_PROJECTS.map((project) => (
-            <RevealItem key={project.name}>
+            <RevealItem key={project.name} className="w-[85vw] shrink-0 snap-center md:w-auto md:shrink">
               <MoreProjectCard {...project} />
             </RevealItem>
           ))}

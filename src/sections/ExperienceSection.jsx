@@ -18,7 +18,7 @@ export default function ExperienceSection() {
         </RevealItem>
 
         <RevealItem>
-          <ul className="relative space-y-10 border-l border-white/10 pl-0">
+          <ul className="relative space-y-10 border-l border-white/10 pl-0 max-h-[65vh] overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:max-h-none md:overflow-visible">
             {TIMELINE_ENTRIES.map((entry) => (
               <TimelineEntry
                 key={`${entry.year}-${entry.title}`}
