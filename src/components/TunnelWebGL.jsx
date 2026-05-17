@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { AURORA_GLSL, AURORA_HEX } from '../constants/auroraTheme';
 import { createFpsGate, getGraphicsProfile, shouldRenderGraphics } from '../utils/graphicsPerf';
 
 const TUNNEL_LENGTH = 480;
@@ -19,10 +20,10 @@ function createSoftParticleTexture() {
   const ctx = canvas.getContext('2d');
 
   const body = ctx.createRadialGradient(size * 0.5, size * 0.5, 0, size * 0.5, size * 0.5, size * 0.5);
-  body.addColorStop(0, 'rgba(255, 255, 255, 1)');
-  body.addColorStop(0.15, 'rgba(240, 248, 255, 0.95)');
-  body.addColorStop(0.38, 'rgba(120, 170, 220, 0.35)');
-  body.addColorStop(0.62, 'rgba(40, 80, 140, 0.12)');
+  body.addColorStop(0, 'rgba(220, 255, 245, 1)');
+  body.addColorStop(0.15, 'rgba(120, 255, 200, 0.9)');
+  body.addColorStop(0.38, 'rgba(80, 200, 255, 0.4)');
+  body.addColorStop(0.62, 'rgba(140, 90, 255, 0.15)');
   body.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = body;
   ctx.fillRect(0, 0, size, size);
@@ -46,9 +47,9 @@ function createBokehTexture() {
   const ctx = canvas.getContext('2d');
 
   const glow = ctx.createRadialGradient(size * 0.5, size * 0.5, 0, size * 0.5, size * 0.5, size * 0.5);
-  glow.addColorStop(0, 'rgba(255, 255, 255, 0.85)');
-  glow.addColorStop(0.18, 'rgba(220, 238, 255, 0.45)');
-  glow.addColorStop(0.45, 'rgba(140, 185, 235, 0.12)');
+  glow.addColorStop(0, 'rgba(180, 255, 220, 0.85)');
+  glow.addColorStop(0.18, 'rgba(120, 230, 255, 0.5)');
+  glow.addColorStop(0.45, 'rgba(160, 100, 255, 0.18)');
   glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, size, size);
@@ -112,13 +113,13 @@ function createTunnelParticleMaterial(texture, isBokeh = false) {
         float isBokeh = step(0.5, uBokeh);
         float alpha = tex.a * vDepth * mix(0.5 + sphere * 0.5, 0.18 + sphere * 0.12, isBokeh);
 
-        vec3 core = vec3(1.0, 1.0, 1.0);
-        vec3 edge = vec3(0.06, 0.24, 0.48);
+        vec3 core = vec3(0.92, 1.0, 0.96);
+        vec3 edge = ${AURORA_GLSL.tunnelEdge};
         vec3 col = mix(edge, core, sphere);
         col *= mix(0.7, 1.0, vDepth);
         col += tex.rgb * sphere * mix(0.35, 0.55, isBokeh);
-        col = mix(col, vec3(0.55, 0.85, 0.98), uWarp * 0.45);
-        col += vec3(1.0) * pow(sphere, 3.0) * mix(0.25, 0.12, isBokeh) * vSize;
+        col = mix(col, ${AURORA_GLSL.tunnelWarp}, uWarp * 0.55);
+        col += mix(vec3(0.55, 1.0, 0.75), vec3(0.75, 0.45, 1.0), vEdge) * pow(sphere, 3.0) * mix(0.28, 0.14, isBokeh) * vSize;
 
         gl_FragColor = vec4(col, alpha);
       }
@@ -180,7 +181,7 @@ export default function TunnelWebGL({ scrollRef, activeSectionId, paused = false
     // Performance improvement: Run Bloom pass at half resolution to significantly reduce lag
     const bloomW = Math.floor(window.innerWidth * perf.bloomScale);
     const bloomH = Math.floor(window.innerHeight * perf.bloomScale);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(bloomW, bloomH), 1.35, 0.48, 0.085);
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(bloomW, bloomH), 1.5, 0.52, 0.08);
     composer.addPass(bloomPass);
 
     const tunnel = new THREE.Group();
@@ -250,8 +251,8 @@ export default function TunnelWebGL({ scrollRef, activeSectionId, paused = false
 
     // 14 THREE.LineLoop rings at evenly spaced Z depths
     const ringMat = new THREE.LineBasicMaterial({
-      color: 0x1a3a5c,
-      opacity: 0.18,
+      color: AURORA_HEX.ring,
+      opacity: 0.22,
       transparent: true,
       blending: THREE.AdditiveBlending,
     });

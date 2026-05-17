@@ -11,58 +11,43 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  * Keeps UI smooth — never two heavy scenes at once.
  */
 export function useBackgroundScene(loading) {
-  const [scene, setScene] = useState('tunnel');
-  const [opacity, setOpacity] = useState(0);
+  const [tunnelOpacity, setTunnelOpacity] = useState(0);
+  const [chipOpacity, setChipOpacity] = useState(0);
   const [ready, setReady] = useState(false);
   const cancelledRef = useRef(false);
 
   useEffect(() => {
     if (loading) {
       setReady(false);
-      setOpacity(0);
+      setTunnelOpacity(0);
+      setChipOpacity(0);
       return undefined;
     }
 
     cancelledRef.current = false;
 
-    const fadeOut = async () => {
-      setOpacity(0);
-      await sleep(FADE_MS);
-    };
-
-    const fadeIn = async () => {
-      await new Promise((resolve) => requestAnimationFrame(resolve));
-      setOpacity(1);
-      await sleep(FADE_MS);
-    };
-
     const run = async () => {
-      setScene('tunnel');
-      setOpacity(1);
+      setTunnelOpacity(1);
+      setChipOpacity(0);
       setReady(true);
 
       while (!cancelledRef.current) {
         await sleep(TUNNEL_MS);
         if (cancelledRef.current) break;
 
-        await fadeOut();
+        setTunnelOpacity(0);
+        await sleep(FADE_MS + 80);
         if (cancelledRef.current) break;
 
-        setScene('chip');
-        await sleep(80);
-        await fadeIn();
-        if (cancelledRef.current) break;
-
+        setChipOpacity(1);
         await sleep(CHIP_MS);
         if (cancelledRef.current) break;
 
-        await fadeOut();
+        setChipOpacity(0);
+        await sleep(FADE_MS + 80);
         if (cancelledRef.current) break;
 
-        setScene('tunnel');
-        await sleep(80);
-        await fadeIn();
-        if (cancelledRef.current) break;
+        setTunnelOpacity(1);
       }
     };
 
@@ -73,5 +58,5 @@ export function useBackgroundScene(loading) {
     };
   }, [loading]);
 
-  return { scene, opacity, ready, fadeMs: FADE_MS };
+  return { tunnelOpacity, chipOpacity, ready, fadeMs: FADE_MS };
 }

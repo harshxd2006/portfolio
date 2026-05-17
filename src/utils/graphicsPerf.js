@@ -8,10 +8,11 @@ export function getGraphicsProfile() {
   return {
     reducedMotion,
     lowPower,
-    pixelRatio: Math.min(window.devicePixelRatio || 1, lowPower ? 1.2 : 1.5),
-    targetFps: lowPower ? 30 : 48,
+    pixelRatio: Math.min(window.devicePixelRatio || 1, lowPower ? 1 : 1.25),
+    targetFps: lowPower ? 24 : 40,
     antialias: !lowPower,
-    bloomScale: lowPower ? 0.4 : 0.5,
+    bloomScale: lowPower ? 0.35 : 0.45,
+    enableLut: !lowPower,
   };
 }
 

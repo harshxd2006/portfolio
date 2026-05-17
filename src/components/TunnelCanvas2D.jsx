@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { AURORA_RGB, lerpAuroraRgb } from '../constants/auroraTheme';
 
 const TUNNEL_LENGTH = 480;
 
@@ -129,14 +130,14 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
 
         const vEdge = clamp((p.r - 10.0) / 8.0, 0, 1);
 
-        const cr = lerp(255, 13, vEdge);
-        const cg = lerp(255, 56, vEdge);
-        const cb = lerp(255, 115, vEdge);
-
-        const tint = uWarp * 0.4;
-        const fr = Math.round(lerp(cr, 140, tint));
-        const fg = Math.round(lerp(cg, 209, tint));
-        const fb = Math.round(lerp(cb, 242, tint));
+        const inner = { r: 230, g: 255, b: 248 };
+        const outer = AURORA_RGB.mint;
+        const edgeRgb = lerpAuroraRgb(inner, outer, vEdge);
+        const tint = uWarp * 0.5;
+        const warpRgb = lerpAuroraRgb(edgeRgb, AURORA_RGB.violet, tint);
+        const fr = warpRgb.r;
+        const fg = warpRgb.g;
+        const fb = warpRgb.b;
 
         const scale = 300.0 / zDist;
         const size2d = Math.max(0.5, 3.5 * scale * 0.05);
@@ -158,7 +159,7 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
       });
 
       // RINGS (14 evenly spaced LineLoop rings from the shader)
-      ctx.strokeStyle = 'rgba(26, 58, 92, 0.18)';
+      ctx.strokeStyle = 'rgba(52, 180, 140, 0.22)';
       ctx.lineWidth = 1;
       for (let i = 0; i < 14; i++) {
         const zOffset = (i / 14) * TUNNEL_LENGTH;

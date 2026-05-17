@@ -25,7 +25,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const { scene, opacity, ready, fadeMs } = useBackgroundScene(loading);
+  const { tunnelOpacity, chipOpacity, ready, fadeMs } = useBackgroundScene(loading);
 
   const sectionIds = SECTIONS.map((s) => s.id);
   const activeId = useActiveSection(scrollRef, sectionIds);
@@ -40,27 +40,33 @@ export default function App() {
 
   const isLastSection = activeId === sectionIds[sectionIds.length - 1];
 
-  const bgStyle = {
-    opacity,
+  const tunnelBgStyle = {
+    opacity: tunnelOpacity,
     transition: `opacity ${fadeMs}ms ease-in-out`,
+    pointerEvents: tunnelOpacity > 0.01 ? 'auto' : 'none',
+  };
+
+  const chipBgStyle = {
+    opacity: chipOpacity,
+    transition: `opacity ${fadeMs}ms ease-in-out`,
+    pointerEvents: chipOpacity > 0.01 ? 'auto' : 'none',
   };
 
   return (
     <>
-      {ready && scene === 'tunnel' && (
-        <div className="background-layer" style={bgStyle}>
-          <BackgroundCanvas
-            scrollRef={scrollRef}
-            activeSectionId={activeId || 'hero'}
-            paused={opacity < 0.99}
-          />
-        </div>
-      )}
-
-      {ready && scene === 'chip' && (
-        <div className="background-layer" style={bgStyle}>
-          <ChipScene active={opacity > 0.01} />
-        </div>
+      {ready && (
+        <>
+          <div className="background-layer" style={tunnelBgStyle}>
+            <BackgroundCanvas
+              scrollRef={scrollRef}
+              activeSectionId={activeId || 'hero'}
+              paused={tunnelOpacity < 0.01}
+            />
+          </div>
+          <div className="background-layer" style={chipBgStyle}>
+            <ChipScene active={chipOpacity > 0.01} />
+          </div>
+        </>
       )}
 
       <AnimatePresence mode="wait">

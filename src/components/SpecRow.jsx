@@ -1,14 +1,14 @@
 export default function SpecRow({ label, detail }) {
   return (
-    <div className="flex w-full items-baseline gap-2 py-1.5">
-      <span className="shrink-0 font-dm text-xs text-white">{label}</span>
+    <div className="grid w-full grid-cols-1 gap-0.5 border-b border-white/[0.06] py-2.5 last:border-b-0 sm:grid-cols-[minmax(7.5rem,auto)_1fr_auto] sm:items-baseline sm:gap-x-3">
+      <span className="font-dm text-xs font-medium text-white">{label}</span>
       <span
-        className="mb-0.5 min-w-[0.5rem] flex-1 overflow-hidden whitespace-nowrap text-[10px] tracking-[0.3em] text-white/15"
+        className="hidden overflow-hidden whitespace-nowrap text-[10px] tracking-[0.3em] text-white/15 sm:block"
         aria-hidden="true"
       >
-        {'·'.repeat(40)}
+        {'·'.repeat(24)}
       </span>
-      <span className="text-right font-dm text-xs text-white/70 min-w-0 max-w-[55%] whitespace-normal break-words sm:max-w-none">{detail}</span>
+      <span className="font-dm text-xs leading-snug text-white/70 sm:text-right">{detail}</span>
     </div>
   );
 }

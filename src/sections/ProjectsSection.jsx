@@ -7,7 +7,11 @@ import { FLAGSHIP_PROJECTS } from '../constants/projectsData';
 export default function ProjectsSection() {
   return (
     <SectionShell id="projects" className="!items-stretch">
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div
+        className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-b from-black/55 via-black/40 to-black/55"
+        aria-hidden="true"
+      />
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-y-auto no-scrollbar">
         <Reveal className="shrink-0">
           <RevealItem>
             <SectionHeading
@@ -19,9 +23,9 @@ export default function ProjectsSection() {
           </RevealItem>
         </Reveal>
 
-        <Reveal className="grid min-h-0 flex-1 auto-rows-max gap-3 overflow-y-auto no-scrollbar pb-8 lg:auto-rows-fr lg:grid-cols-2 lg:gap-4 lg:overflow-visible lg:pb-0">
+        <Reveal className="grid gap-4 pb-6 lg:grid-cols-2 lg:gap-5 lg:pb-0">
           {FLAGSHIP_PROJECTS.map((project) => (
-            <RevealItem key={project.name} className="min-h-0">
+            <RevealItem key={project.name}>
               <FlagshipProjectCard {...project} />
             </RevealItem>
           ))}

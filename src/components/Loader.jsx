@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
+import '../utils/preloadAssets';
 
 export default function Loader({ onComplete }) {
   useEffect(() => {

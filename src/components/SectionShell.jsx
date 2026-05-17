@@ -13,7 +13,7 @@ export default function SectionShell({ id, children, className = '', align = 'ce
             position: 'absolute',
             top: '20%', left: '15%',
             width: '400px', height: '400px',
-            background: 'radial-gradient(circle, rgba(142,202,230,0.04) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(52,255,168,0.05) 0%, transparent 70%)',
             borderRadius: '50%',
             filter: 'blur(40px)'
           }} />
@@ -21,7 +21,7 @@ export default function SectionShell({ id, children, className = '', align = 'ce
             position: 'absolute',
             bottom: '15%', right: '10%',
             width: '300px', height: '300px',
-            background: 'radial-gradient(circle, rgba(255,255,255,0.025) 0%, transparent 70%)',
+            background: 'radial-gradient(circle, rgba(139,92,246,0.05) 0%, transparent 70%)',
             borderRadius: '50%',
             filter: 'blur(60px)'
           }} />

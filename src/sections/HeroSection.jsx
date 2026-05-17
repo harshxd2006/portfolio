@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { AURORA_RGB } from '../constants/auroraTheme';
 import { createFpsGate, getGraphicsProfile, shouldRenderGraphics } from '../utils/graphicsPerf';
 import HexagonCard from '../components/HexagonCard';
 import Marquee from '../components/Marquee';
@@ -32,14 +33,15 @@ function NeonStreaks({ isActive }) {
     const sinA = Math.sin(angle);
 
     const createStreak = (initial = false) => {
-      const isCyan = Math.random() > 0.5;
+      const isAurora = Math.random() > 0.5;
+      const auroraColor = isAurora ? AURORA_RGB.mint : AURORA_RGB.violet;
       return {
         x: initial ? Math.random() * width : (Math.random() > 0.5 ? Math.random() * width : -200),
         y: initial ? Math.random() * height : (Math.random() > 0.5 ? -200 : Math.random() * height),
         length: Math.random() * 120 + 80,
         speed: Math.random() * 4 + 2,
-        color: isCyan ? 'rgba(142,202,230' : 'rgba(255,255,255',
-        maxOpacity: isCyan ? 0.6 : 0.4,
+        color: `rgba(${auroraColor.r},${auroraColor.g},${auroraColor.b}`,
+        maxOpacity: isAurora ? 0.65 : 0.5,
       };
     };
 

@@ -1,7 +1,7 @@
 import { Component, lazy, Suspense } from 'react';
 import TunnelCanvas2D from './TunnelCanvas2D';
 
-const TunnelWebGL = lazy(() => import('./TunnelWebGL'));
+const TunnelWebGL = lazy(() => import('./GLTFTunnel'));
 
 class TunnelErrorBoundary extends Component {
   constructor(props) {

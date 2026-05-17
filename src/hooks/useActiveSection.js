@@ -34,28 +34,9 @@ export function useActiveSection(containerRef, sectionIds) {
     updateActive();
     container.addEventListener('scroll', onScroll, { passive: true });
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-
-        if (visible.length > 0) {
-          setActiveId(visible[0].target.id);
-        }
-      },
-      {
-        root: container,
-        threshold: [0.55, 0.75, 0.95],
-      },
-    );
-
-    elements.forEach((el) => observer.observe(el));
-
     return () => {
       container.removeEventListener('scroll', onScroll);
       if (scrollRaf) cancelAnimationFrame(scrollRaf);
-      observer.disconnect();
     };
   }, [containerRef, sectionIds]);
 
