@@ -1,5 +1,6 @@
 import AlternatingItalic from './AlternatingItalic';
 import SectionBadge from './SectionBadge';
+import { RevealHeadline, RevealLine } from './Reveal';
 import { toSpacedLabel } from '../utils/spacedText';
 
 export default function SectionHeading({
@@ -15,11 +16,19 @@ export default function SectionHeading({
 
   return (
     <header className={className}>
-      {badge != null && <SectionBadge number={badge} title={badgeTitle} />}
-      <p className="section-label mb-4">
-        <AlternatingItalic text={labelText} />
-      </p>
-      <h2 className={`section-headline ${headlineClassName}`}>{headline}</h2>
+      {badge != null && (
+        <RevealLine>
+          <SectionBadge number={badge} title={badgeTitle} />
+        </RevealLine>
+      )}
+      <RevealLine delay={0.12}>
+        <p className="section-label mb-4">
+          <AlternatingItalic text={labelText} />
+        </p>
+      </RevealLine>
+      <RevealHeadline className={`section-headline ${headlineClassName}`}>
+        {headline}
+      </RevealHeadline>
     </header>
   );
 }

@@ -6,11 +6,12 @@ export const revealContainer = {
 };
 
 export const revealItem = {
-  hidden: { opacity: 0, y: 32 },
+  hidden: { opacity: 0, y: 48, clipPath: 'inset(100% 0% 0% 0%)' },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.75, ease: [0.22, 1, 0.36, 1] },
+    clipPath: 'inset(0% 0% 0% 0%)',
+    transition: { duration: 0.9, ease: [0.16, 1, 0.3, 1] },
   },
 };
 

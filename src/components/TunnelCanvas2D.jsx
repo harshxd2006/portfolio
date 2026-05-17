@@ -146,9 +146,15 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
         const screenX = cx - shiftX * depthFactor + px * scale;
         const screenY = cy - shiftY * depthFactor + py * scale;
 
-        ctx.fillStyle = `rgba(${fr}, ${fg}, ${fb}, ${alpha})`;
-        // Performance improvement: fillRect is dramatically faster than arc/fill paths
-        ctx.fillRect(screenX - size2d, screenY - size2d, size2d * 2, size2d * 2);
+        const grad = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, size2d);
+        grad.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.95})`);
+        grad.addColorStop(0.25, `rgba(${fr}, ${fg}, ${fb}, ${alpha * 0.75})`);
+        grad.addColorStop(0.55, `rgba(${fr}, ${fg}, ${fb}, ${alpha * 0.25})`);
+        grad.addColorStop(1, `rgba(${fr}, ${fg}, ${fb}, 0)`);
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(screenX, screenY, size2d, 0, Math.PI * 2);
+        ctx.fill();
       });
 
       // RINGS (14 evenly spaced LineLoop rings from the shader)

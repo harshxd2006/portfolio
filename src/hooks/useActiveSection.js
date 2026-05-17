@@ -13,6 +13,7 @@ export function useActiveSection(containerRef, sectionIds) {
 
     if (elements.length === 0) return undefined;
 
+    let scrollRaf = 0;
     const updateActive = () => {
       const vh = container.clientHeight;
       if (!vh) return;
@@ -22,8 +23,16 @@ export function useActiveSection(containerRef, sectionIds) {
       setActiveId(elements[clamped].id);
     };
 
+    const onScroll = () => {
+      if (scrollRaf) return;
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0;
+        updateActive();
+      });
+    };
+
     updateActive();
-    container.addEventListener('scroll', updateActive, { passive: true });
+    container.addEventListener('scroll', onScroll, { passive: true });
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -44,7 +53,8 @@ export function useActiveSection(containerRef, sectionIds) {
     elements.forEach((el) => observer.observe(el));
 
     return () => {
-      container.removeEventListener('scroll', updateActive);
+      container.removeEventListener('scroll', onScroll);
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
       observer.disconnect();
     };
   }, [containerRef, sectionIds]);

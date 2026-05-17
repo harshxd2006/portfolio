@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useRef, useState } from 'react';
 import AmbientPlayer from './components/AmbientPlayer';
 import BackgroundCanvas from './components/BackgroundCanvas';
+import ChipScene from './components/ChipScene';
 import Footer from './components/Footer';
 import Header from './components/Header';
 import HudNavigation from './components/HudNavigation';
@@ -10,6 +11,7 @@ import NavOverlay from './components/NavOverlay';
 import { pageEnter } from './constants/animations';
 import { SECTIONS } from './constants/sections';
 import { useActiveSection } from './hooks/useActiveSection';
+import { useBackgroundScene } from './hooks/useBackgroundScene';
 import { useSnapScroll } from './hooks/useSnapScroll';
 import ContactSection from './sections/ContactSection';
 import ExperienceSection from './sections/ExperienceSection';
@@ -22,6 +24,8 @@ export default function App() {
   const scrollRef = useRef(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const { scene, opacity, ready, fadeMs } = useBackgroundScene(loading);
 
   const sectionIds = SECTIONS.map((s) => s.id);
   const activeId = useActiveSection(scrollRef, sectionIds);
@@ -36,9 +40,28 @@ export default function App() {
 
   const isLastSection = activeId === sectionIds[sectionIds.length - 1];
 
+  const bgStyle = {
+    opacity,
+    transition: `opacity ${fadeMs}ms ease-in-out`,
+  };
+
   return (
     <>
-      <BackgroundCanvas scrollRef={scrollRef} activeSectionId={activeId || 'hero'} />
+      {ready && scene === 'tunnel' && (
+        <div className="background-layer" style={bgStyle}>
+          <BackgroundCanvas
+            scrollRef={scrollRef}
+            activeSectionId={activeId || 'hero'}
+            paused={opacity < 0.99}
+          />
+        </div>
+      )}
+
+      {ready && scene === 'chip' && (
+        <div className="background-layer" style={bgStyle}>
+          <ChipScene active={opacity > 0.01} />
+        </div>
+      )}
 
       <AnimatePresence mode="wait">
         {loading && <Loader onComplete={() => setLoading(false)} />}
@@ -75,7 +98,7 @@ export default function App() {
             className="snap-container relative z-10 outline-none"
             aria-label="Portfolio sections"
           >
-            <HeroSection onNavigate={navigateTo} />
+            <HeroSection onNavigate={navigateTo} isActive={activeId === 'hero'} />
             <StackSection />
             <ProjectsSection />
             <MoreProjectsSection />

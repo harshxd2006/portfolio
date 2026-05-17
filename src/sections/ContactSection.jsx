@@ -1,7 +1,11 @@
 import { FaGithub, FaLinkedinIn } from 'react-icons/fa6';
+import Marquee from '../components/Marquee';
 import SectionHeading from '../components/SectionHeading';
 import SectionShell from '../components/SectionShell';
 import { Reveal, RevealItem } from '../components/Reveal';
+
+const CONTACT_MARQUEE_TEXT =
+  'AVAILABLE FOR INTERNSHIPS · HACKATHON TEAMS · COLLABS · FULL STACK · AI SYSTEMS · ROBOTICS · ';
 
 const CONTACT_LINKS = [
   {
@@ -26,6 +30,11 @@ const SOCIAL = [
 export default function ContactSection() {
   return (
     <SectionShell id="contact">
+      <Marquee
+        direction="right"
+        text={CONTACT_MARQUEE_TEXT}
+        className="pointer-events-auto -mx-8 mb-8 w-[calc(100%+4rem)] md:-mx-12 md:w-[calc(100%+6rem)]"
+      />
       <Reveal className="mx-auto flex w-full max-w-lg flex-col items-center text-center">
         <RevealItem className="w-full">
           <SectionHeading
