@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
 
+// Adjust this path to where your mp3 is stored in your project
+// Example for Vite: import ambientUrl from '../assets/interstellar_chase_2.mp3';
+const ambientUrl = '/interstellar_chase_2.mp3';
+
 export function useAmbientSound(scrollRef) {
   const [playing, setPlaying] = useState(false);
   const chainRef = useRef(null);
+  const audioRef = useRef(null);
   const armedRef = useRef(false);
   const triggeredRef = useRef(false);
+  const wasPlayingRef = useRef(false);
 
   const initChain = useCallback(async () => {
     if (chainRef.current) return chainRef.current;
@@ -20,40 +26,163 @@ export function useAmbientSound(scrollRef) {
       depth: 0.6,
     }).start();
 
-    const synth1 = new Tone.Synth({
-      oscillator: { type: 'sine' },
-      envelope: { attack: 3, decay: 0, sustain: 1, release: 4 },
+    const player = new Tone.Player({
+      url: ambientUrl,
+      autostart: false,
+      loop: true,
+      volume: -8,
     }).connect(filter);
 
-    const synth2 = new Tone.Synth({
-      oscillator: { type: 'sine' },
-      envelope: { attack: 4, decay: 0, sustain: 1, release: 5 },
-    }).connect(filter);
+    // Ensure the player's buffer is loaded before we attempt to start it.
+    try {
+      if (!player.buffer || !player.buffer.get()) {
+        // Tone.Player#load returns a Promise that resolves when buffer is ready.
+        // Some browsers or network conditions may delay this, so await it.
+        // eslint-disable-next-line no-await-in-loop
+        await player.load();
+      }
+    } catch (e) {
+      // If load fails, log and continue; play() will surface errors.
+      // eslint-disable-next-line no-console
+      console.warn('[useAmbientSound] player.load() failed', e);
+    }
 
     filter.connect(reverb);
     reverb.toDestination();
 
     Tone.getDestination().volume.value = -Infinity;
 
-    chainRef.current = { synth1, synth2 };
+    chainRef.current = { player, filter, reverb };
     return chainRef.current;
   }, []);
 
   const play = useCallback(async () => {
     const chain = await initChain();
-    chain.synth1.triggerAttack('C1');
-    chain.synth2.triggerAttack('G1');
-    Tone.getDestination().volume.rampTo(0, 3);
-    setPlaying(true);
+    try {
+      // If an HTMLAudio fallback is present and playing, pause it before starting Tone player
+      if (audioRef.current && !audioRef.current.paused) {
+        try {
+          audioRef.current.pause();
+        } catch (e) {}
+      }
+      // If buffer not yet loaded, wait for it to load before starting.
+      if (!chain.player.buffer || !chain.player.buffer.get()) {
+        await chain.player.load();
+      }
+
+      if (chain.player.state !== 'started') {
+        chain.player.start();
+      }
+
+      Tone.getDestination().volume.rampTo(0, 3);
+      setPlaying(true);
+    } catch (e) {
+      // eslint-disable-next-line no-console
+      console.error('[useAmbientSound] failed to play player:', e);
+      // If decoding failed (EncodingError) or player failed, fall back to HTMLAudio
+      try {
+        if (!audioRef.current) {
+          audioRef.current = new Audio(ambientUrl);
+          audioRef.current.loop = true;
+          audioRef.current.preload = 'auto';
+          audioRef.current.volume = 0.5;
+          audioRef.current.setAttribute('data-ambient', 'true');
+          audioRef.current.style.display = 'none';
+          document.body.appendChild(audioRef.current);
+          // expose for debugging
+          // eslint-disable-next-line no-undef
+          window.__ambientAudio = audioRef.current;
+        }
+        // try to play HTMLAudio
+        // eslint-disable-next-line no-console
+        console.info('[useAmbientSound] falling back to HTMLAudio');
+        await audioRef.current.play();
+        // Ensure Tone player is stopped if it had partially started
+        try {
+          if (chainRef.current?.player?.state === 'started') chainRef.current.player.stop();
+        } catch (e2) {}
+        setPlaying(true);
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.warn('[useAmbientSound] HTMLAudio fallback failed', err);
+      }
+    }
   }, [initChain]);
 
   const pause = useCallback(() => {
-    if (!chainRef.current) return;
-    const { synth1, synth2 } = chainRef.current;
-    synth1.triggerRelease();
-    synth2.triggerRelease();
-    Tone.getDestination().volume.rampTo(-Infinity, 2);
+    // Stop HTMLAudio fallback if present
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        // reset position to start so subsequent play begins from start
+        audioRef.current.currentTime = 0;
+      } catch (e) {}
+    }
+
+    if (chainRef.current) {
+      const { player } = chainRef.current;
+      try {
+        if (player.state === 'started') {
+          player.stop();
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    try {
+      Tone.getDestination().volume.rampTo(-Infinity, 2);
+    } catch (e) {}
     setPlaying(false);
+  }, []);
+
+  // Dispose Tone objects on unmount to free buffers and audio nodes
+  useEffect(() => {
+    return () => {
+      if (chainRef.current) {
+        try {
+          chainRef.current.player?.stop?.();
+          chainRef.current.player?.dispose?.();
+          chainRef.current.filter?.dispose?.();
+          chainRef.current.reverb?.dispose?.();
+        } catch (e) {
+          // ignore
+        }
+        chainRef.current = null;
+      }
+      try {
+        Tone.getDestination().volume.value = -Infinity;
+      } catch (e) {}
+    };
+  }, []);
+
+  // Pause playback when the document is hidden (tab switch / background)
+  useEffect(() => {
+    const onVisibility = () => {
+      // Stop both Tone player and HTMLAudio fallback when document hidden
+      try {
+        if (document.hidden) {
+          wasPlayingRef.current = false;
+          if (audioRef.current && !audioRef.current.paused) {
+            try { audioRef.current.pause(); } catch (e) {}
+          }
+          if (chainRef.current?.player?.state === 'started') {
+            try { chainRef.current.player.stop(); } catch (e) {}
+          }
+          setPlaying(false);
+          // eslint-disable-next-line no-console
+          console.info('[useAmbientSound] document hidden — stopped playback');
+        } else {
+          // Do not auto-resume — require user gesture to restart for UX/privacy
+          wasPlayingRef.current = false;
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
   }, []);
 
   const toggle = useCallback(() => {

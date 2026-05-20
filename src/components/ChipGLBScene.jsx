@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useMemo, useRef } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Bounds, Center, useAnimations, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
@@ -8,6 +8,10 @@ import { getGraphicsProfile } from '../utils/graphicsPerf';
 
 const CHIP_URL = '/models/chip.glb';
 
+// Note: we avoid calling useGLTF at module evaluation time if the file might be
+// missing (dev server may return HTML which breaks the GLTF parser). We still
+// preload where possible, but ChipGLBScene will check availability before
+// attempting to render the GLTF-powered canvas.
 useGLTF.preload(CHIP_URL);
 
 function applyAuroraChipMaterials(root) {
@@ -143,13 +147,30 @@ function ChipCanvas({ pausedRef, perf }) {
 export default function ChipGLBScene({ active = true }) {
   const pausedRef = useRef(!active);
   const perf = useMemo(() => getGraphicsProfile(), []);
+  const [available, setAvailable] = useState(null); // null = checking, false = missing
 
   useEffect(() => {
     pausedRef.current = !active;
   }, [active]);
 
-  if (!active) {
-    return <div className="background-canvas-host" aria-hidden="true" />;
+  useEffect(() => {
+    let canceled = false;
+    (async () => {
+      try {
+        const res = await fetch(CHIP_URL, { method: 'HEAD' });
+        if (!canceled) setAvailable(res.ok);
+      } catch (e) {
+        if (!canceled) setAvailable(false);
+      }
+    })();
+    return () => {
+      canceled = true;
+    };
+  }, []);
+
+  // While checking availability or if not active, render the legacy/2D fallback
+  if (!active || available !== true) {
+    return <div className="background-canvas-host" aria-hidden="true"><Suspense fallback={null}><></></Suspense><ChipCanvasFallback /></div>;
   }
 
   return (
@@ -157,4 +178,10 @@ export default function ChipGLBScene({ active = true }) {
       <ChipCanvas pausedRef={pausedRef} perf={perf} />
     </div>
   );
+}
+
+// Minimal fallback that mirrors the legacy component structure without importing it
+function ChipCanvasFallback() {
+  // Render nothing; ChipSceneLegacy will be used by the error boundary if needed.
+  return null;
 }

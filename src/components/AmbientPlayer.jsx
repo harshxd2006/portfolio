@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { HiSpeakerWave, HiSpeakerXMark } from 'react-icons/hi2';
 import { useAmbientSound } from '../hooks/useAmbientSound';
 
-export default function AmbientPlayer({ scrollRef }) {
-  const { playing, toggle } = useAmbientSound(scrollRef);
+export default function AmbientPlayer({ scrollRef, audioSrc = '/interstellar_chase_2.mp3' }) {
+  const { playing, toggle } = useAmbientSound(scrollRef, audioSrc);
   const [showTip, setShowTip] = useState(false);
 
   return (
@@ -13,6 +13,7 @@ export default function AmbientPlayer({ scrollRef }) {
           Ambient sound
         </span>
       )}
+
       <button
         type="button"
         aria-label={playing ? 'Pause ambient sound' : 'Play ambient sound'}
