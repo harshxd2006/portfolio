@@ -12,6 +12,7 @@ export function useAmbientSound(scrollRef) {
   const armedRef = useRef(false);
   const triggeredRef = useRef(false);
   const wasPlayingRef = useRef(false);
+  const useFallbackAudioRef = useRef(false);
 
   const initChain = useCallback(async () => {
     if (chainRef.current) return chainRef.current;
@@ -35,7 +36,7 @@ export function useAmbientSound(scrollRef) {
 
     // Ensure the player's buffer is loaded before we attempt to start it.
     try {
-      if (!player.buffer || !player.buffer.get()) {
+      if (!player.buffer || !player.buffer.loaded) {
         // Tone.Player#load returns a Promise that resolves when buffer is ready.
         // Some browsers or network conditions may delay this, so await it.
         // eslint-disable-next-line no-await-in-loop
@@ -56,7 +57,48 @@ export function useAmbientSound(scrollRef) {
     return chainRef.current;
   }, []);
 
+  // Pre-initialize Tone.js and load sound in background on mount
+  useEffect(() => {
+    let canceled = false;
+    const preboot = async () => {
+      try {
+        if (!canceled) {
+          await initChain();
+        }
+      } catch (e) {
+        // ignore preboot errors
+      }
+    };
+    preboot();
+    return () => {
+      canceled = true;
+    };
+  }, [initChain]);
+
   const play = useCallback(async () => {
+    // If Tone.js previously threw an EncodingError or failed to initialize,
+    // bypass it entirely and run direct, instant HTMLAudio playback to keep the user-gesture valid.
+    if (useFallbackAudioRef.current) {
+      try {
+        if (!audioRef.current) {
+          audioRef.current = new Audio(ambientUrl);
+          audioRef.current.loop = true;
+          audioRef.current.preload = 'auto';
+          audioRef.current.volume = 0.5;
+          audioRef.current.setAttribute('data-ambient', 'true');
+          audioRef.current.style.display = 'none';
+          document.body.appendChild(audioRef.current);
+          window.__ambientAudio = audioRef.current;
+        }
+        console.info('[useAmbientSound] direct HTMLAudio playback');
+        await audioRef.current.play();
+        setPlaying(true);
+      } catch (err) {
+        console.warn('[useAmbientSound] HTMLAudio playback failed', err);
+      }
+      return;
+    }
+
     const chain = await initChain();
     try {
       // If an HTMLAudio fallback is present and playing, pause it before starting Tone player
@@ -66,7 +108,7 @@ export function useAmbientSound(scrollRef) {
         } catch (e) {}
       }
       // If buffer not yet loaded, wait for it to load before starting.
-      if (!chain.player.buffer || !chain.player.buffer.get()) {
+      if (!chain.player.buffer || !chain.player.buffer.loaded) {
         await chain.player.load();
       }
 
@@ -79,6 +121,7 @@ export function useAmbientSound(scrollRef) {
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('[useAmbientSound] failed to play player:', e);
+      useFallbackAudioRef.current = true; // Cache Tone.js failure
       // If decoding failed (EncodingError) or player failed, fall back to HTMLAudio
       try {
         if (!audioRef.current) {

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { AURORA_HEX } from '../constants/auroraTheme';
 import { pickAnimationClip } from '../utils/pickAnimationClip';
 import { getGraphicsProfile } from '../utils/graphicsPerf';
+import ChipSceneLegacy from './ChipSceneLegacy';
 
 const CHIP_URL = '/models/chip.glb';
 
@@ -12,7 +13,7 @@ const CHIP_URL = '/models/chip.glb';
 // missing (dev server may return HTML which breaks the GLTF parser). We still
 // preload where possible, but ChipGLBScene will check availability before
 // attempting to render the GLTF-powered canvas.
-useGLTF.preload(CHIP_URL);
+// useGLTF.preload(CHIP_URL);
 
 function applyAuroraChipMaterials(root) {
   root.traverse((child) => {
@@ -144,7 +145,8 @@ function ChipCanvas({ pausedRef, perf }) {
   );
 }
 
-export default function ChipGLBScene({ active = true }) {
+export default function ChipGLBScene(props) {
+  const { active = true } = props;
   const pausedRef = useRef(!active);
   const perf = useMemo(() => getGraphicsProfile(), []);
   const [available, setAvailable] = useState(null); // null = checking, false = missing
@@ -158,7 +160,11 @@ export default function ChipGLBScene({ active = true }) {
     (async () => {
       try {
         const res = await fetch(CHIP_URL, { method: 'HEAD' });
-        if (!canceled) setAvailable(res.ok);
+        if (!canceled) {
+          const contentType = res.headers.get('content-type') || '';
+          const isHtml = contentType.includes('text/html');
+          setAvailable(res.ok && !isHtml);
+        }
       } catch (e) {
         if (!canceled) setAvailable(false);
       }
@@ -170,6 +176,9 @@ export default function ChipGLBScene({ active = true }) {
 
   // While checking availability or if not active, render the legacy/2D fallback
   if (!active || available !== true) {
+    if (active && available === false) {
+      return <ChipSceneLegacy {...props} />;
+    }
     return <div className="background-canvas-host" aria-hidden="true"><Suspense fallback={null}><></></Suspense><ChipCanvasFallback /></div>;
   }
 

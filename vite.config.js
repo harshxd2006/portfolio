@@ -10,9 +10,7 @@ export default defineConfig({
     include: ['three', '@react-three/fiber', '@react-three/drei'],
   },
   server: {
-    headers: {
-      'Cache-Control': cacheOneYear,
-    },
+    host: true,
   },
   preview: {
     headers: {
