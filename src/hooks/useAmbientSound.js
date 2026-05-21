@@ -5,7 +5,7 @@ import * as Tone from 'tone';
 // Example for Vite: import ambientUrl from '../assets/interstellar_chase_2.mp3';
 const ambientUrl = '/interstellar_chase_2.mp3';
 
-export function useAmbientSound(scrollRef) {
+export function useAmbientSound(scrollRef, audioSrc = '/interstellar_chase_2.mp3') {
   const [playing, setPlaying] = useState(false);
   const chainRef = useRef(null);
   const audioRef = useRef(null);
@@ -28,7 +28,7 @@ export function useAmbientSound(scrollRef) {
     }).start();
 
     const player = new Tone.Player({
-      url: ambientUrl,
+      url: audioSrc,
       autostart: false,
       loop: true,
       volume: -8,
@@ -40,7 +40,7 @@ export function useAmbientSound(scrollRef) {
         // Tone.Player#load returns a Promise that resolves when buffer is ready.
         // Some browsers or network conditions may delay this, so await it.
         // eslint-disable-next-line no-await-in-loop
-        await player.load();
+        await player.load(audioSrc);
       }
     } catch (e) {
       // If load fails, log and continue; play() will surface errors.
@@ -55,7 +55,7 @@ export function useAmbientSound(scrollRef) {
 
     chainRef.current = { player, filter, reverb };
     return chainRef.current;
-  }, []);
+  }, [audioSrc]);
 
   // Pre-initialize Tone.js and load sound in background on mount
   useEffect(() => {
@@ -81,7 +81,7 @@ export function useAmbientSound(scrollRef) {
     if (useFallbackAudioRef.current) {
       try {
         if (!audioRef.current) {
-          audioRef.current = new Audio(ambientUrl);
+          audioRef.current = new Audio(audioSrc);
           audioRef.current.loop = true;
           audioRef.current.preload = 'auto';
           audioRef.current.volume = 0.5;
@@ -109,7 +109,7 @@ export function useAmbientSound(scrollRef) {
       }
       // If buffer not yet loaded, wait for it to load before starting.
       if (!chain.player.buffer || !chain.player.buffer.loaded) {
-        await chain.player.load();
+        await chain.player.load(audioSrc);
       }
 
       if (chain.player.state !== 'started') {
@@ -125,7 +125,7 @@ export function useAmbientSound(scrollRef) {
       // If decoding failed (EncodingError) or player failed, fall back to HTMLAudio
       try {
         if (!audioRef.current) {
-          audioRef.current = new Audio(ambientUrl);
+          audioRef.current = new Audio(audioSrc);
           audioRef.current.loop = true;
           audioRef.current.preload = 'auto';
           audioRef.current.volume = 0.5;

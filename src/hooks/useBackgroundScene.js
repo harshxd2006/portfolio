@@ -14,7 +14,6 @@ export function useBackgroundScene(loading) {
   const [tunnelOpacity, setTunnelOpacity] = useState(0);
   const [chipOpacity, setChipOpacity] = useState(0);
   const [ready, setReady] = useState(false);
-  const cancelledRef = useRef(false);
 
   useEffect(() => {
     if (loading) {
@@ -24,28 +23,28 @@ export function useBackgroundScene(loading) {
       return undefined;
     }
 
-    cancelledRef.current = false;
+    let localCancelled = false;
 
     const run = async () => {
       setTunnelOpacity(1);
       setChipOpacity(0);
       setReady(true);
 
-      while (!cancelledRef.current) {
+      while (!localCancelled) {
         await sleep(TUNNEL_MS);
-        if (cancelledRef.current) break;
+        if (localCancelled) break;
 
         setTunnelOpacity(0);
         await sleep(FADE_MS + 80);
-        if (cancelledRef.current) break;
+        if (localCancelled) break;
 
         setChipOpacity(1);
         await sleep(CHIP_MS);
-        if (cancelledRef.current) break;
+        if (localCancelled) break;
 
         setChipOpacity(0);
         await sleep(FADE_MS + 80);
-        if (cancelledRef.current) break;
+        if (localCancelled) break;
 
         setTunnelOpacity(1);
       }
@@ -54,7 +53,7 @@ export function useBackgroundScene(loading) {
     run();
 
     return () => {
-      cancelledRef.current = true;
+      localCancelled = true;
     };
   }, [loading]);
 
