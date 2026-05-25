@@ -185,8 +185,7 @@ export default function GLTFTunnel({ scrollRef, activeSectionId, paused = false 
   }, [activeSectionId]);
 
   useEffect(() => {
-    const el = scrollRef?.current;
-    if (!el) return undefined;
+    const el = scrollRef?.current || window;
     const onScroll = () => triggerWarp();
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
