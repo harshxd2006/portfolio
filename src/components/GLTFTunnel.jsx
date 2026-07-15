@@ -1,5 +1,5 @@
 import { Suspense, useEffect, useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { AURORA_HEX } from '../constants/auroraTheme';
@@ -32,12 +32,13 @@ function createLinesMaterial(linesTex) {
   });
 }
 
-function AuroraTunnelTube({ linesTex, pausedRef, warpRef }) {
+function AuroraTunnelTube({ linesTex, pausedRef, warpRef, warpDecayRef, isIntro }) {
   const tubeRef = useRef();
   const ringsRef = useRef();
   const emissiveRef = useRef(new THREE.Color(0x34ffa8));
   const hueRef = useRef(0);
   const travelRef = useRef(0);
+  const lastRenderRef = useRef(0);
 
   const { tubeGeo, ringGeos } = useMemo(() => {
     const tube = new THREE.CylinderGeometry(
@@ -76,7 +77,29 @@ function AuroraTunnelTube({ linesTex, pausedRef, warpRef }) {
   );
 
   useFrame((state, delta) => {
+    const { invalidate } = state;
+
+    if (isIntro) {
+      const now = performance.now();
+      if (now - lastRenderRef.current < 45) { // Capped at ~22 FPS
+        return;
+      }
+      lastRenderRef.current = now;
+    }
+
+    // Warp decay — moved here to eliminate a duplicate RAF loop
+    if (performance.now() > warpDecayRef.current) {
+      const prev = warpRef.current;
+      warpRef.current = THREE.MathUtils.lerp(prev, 0, 0.06);
+      if (Math.abs(warpRef.current) > 0.001) invalidate();
+    } else {
+      invalidate(); // still warping — keep rendering
+    }
+
     if (pausedRef.current || !shouldRenderGraphics()) return;
+
+    // Always request next frame while not paused
+    invalidate();
 
     const warp = warpRef.current;
     const speed = THREE.MathUtils.lerp(0.35, 3.2, warp);
@@ -122,20 +145,29 @@ function AuroraTunnelTube({ linesTex, pausedRef, warpRef }) {
   );
 }
 
-function TunnelScene({ pausedRef, warpRef }) {
+function TunnelScene({ pausedRef, warpRef, warpDecayRef, isIntro }) {
   const linesTex = useTexture('/textures/tunnel-lines-min.jpg');
-  return <AuroraTunnelTube linesTex={linesTex} pausedRef={pausedRef} warpRef={warpRef} />;
+  return <AuroraTunnelTube linesTex={linesTex} pausedRef={pausedRef} warpRef={warpRef} warpDecayRef={warpDecayRef} isIntro={isIntro} />;
 }
 
 function CameraRig({ pausedRef }) {
   const mouse = useRef({ x: 0, y: 0 });
+  const rafQueued = useRef(false);
 
   useEffect(() => {
     const onMove = (e) => {
+      // Throttle to once per rAF
+      if (rafQueued.current) {
+        mouse.current.x = (e.clientX / window.innerWidth - 0.5) * 2;
+        mouse.current.y = -(e.clientY / window.innerHeight - 0.5) * 2;
+        return;
+      }
+      rafQueued.current = true;
       mouse.current.x = (e.clientX / window.innerWidth - 0.5) * 2;
       mouse.current.y = -(e.clientY / window.innerHeight - 0.5) * 2;
+      requestAnimationFrame(() => { rafQueued.current = false; });
     };
-    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mousemove', onMove, { passive: true });
     return () => window.removeEventListener('mousemove', onMove);
   }, []);
 
@@ -161,7 +193,7 @@ function TunnelLights() {
   );
 }
 
-export default function GLTFTunnel({ scrollRef, activeSectionId, paused = false }) {
+export default function GLTFTunnel({ scrollRef, activeSectionId, paused = false, isIntro = false }) {
   const pausedRef = useRef(paused);
   const warpRef = useRef(0);
   const warpDecayRef = useRef(0);
@@ -186,29 +218,31 @@ export default function GLTFTunnel({ scrollRef, activeSectionId, paused = false 
 
   useEffect(() => {
     const el = scrollRef?.current || window;
-    const onScroll = () => triggerWarp();
+    let scrollRaf = 0;
+    const onScroll = () => {
+      if (scrollRaf) return;
+      scrollRaf = requestAnimationFrame(() => {
+        scrollRaf = 0;
+        triggerWarp();
+      });
+    };
     el.addEventListener('scroll', onScroll, { passive: true });
-    return () => el.removeEventListener('scroll', onScroll);
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+      if (scrollRaf) cancelAnimationFrame(scrollRaf);
+    };
   }, [scrollRef]);
 
-  useEffect(() => {
-    let raf = 0;
-    const tick = () => {
-      if (performance.now() > warpDecayRef.current) {
-        warpRef.current = THREE.MathUtils.lerp(warpRef.current, 0, 0.06);
-      }
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, []);
+  // Warp decay is now handled inside AuroraTunnelTube's useFrame
+  // — eliminated a duplicate requestAnimationFrame loop
 
   return (
     <>
       <div className="tunnel-canvas-host" aria-hidden="true">
         <Canvas
           className="h-full w-full"
-          dpr={perf.pixelRatio}
+          dpr={[0.75, perf.lowPower ? 1 : 1.25]}
+          frameloop="demand"
           performance={{ min: 0.5, max: 1 }}
           camera={{ position: [0, 0, 0], fov: 68, near: 0.1, far: 300 }}
           gl={{
@@ -226,10 +260,10 @@ export default function GLTFTunnel({ scrollRef, activeSectionId, paused = false 
           <fog attach="fog" args={['#000000', 18, 95]} />
           <TunnelLights />
           <Suspense fallback={null}>
-            <TunnelScene pausedRef={pausedRef} warpRef={warpRef} />
+            <TunnelScene pausedRef={pausedRef} warpRef={warpRef} warpDecayRef={warpDecayRef} isIntro={isIntro} />
           </Suspense>
           <CameraRig pausedRef={pausedRef} />
-          {!perf.lowPower && <TunnelPostFX pausedRef={pausedRef} />}
+          {!perf.lowPower && <TunnelPostFX pausedRef={pausedRef} enabled={!isIntro} />}
         </Canvas>
       </div>
       <div className="tunnel-edge-vignette pointer-events-none fixed inset-0 z-[1]" aria-hidden="true" />

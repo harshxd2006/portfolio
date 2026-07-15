@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AURORA_RGB, lerpAuroraRgb } from '../constants/auroraTheme';
+import { createFpsGate, getGraphicsProfile } from '../utils/graphicsPerf';
 
 const TUNNEL_LENGTH = 480;
 
@@ -32,9 +33,9 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
     if (!canvas) return undefined;
 
     const ctx = canvas.getContext('2d', { alpha: false });
-    let w = 0;
-    let h = 0;
     let raf = 0;
+    const perf = getGraphicsProfile();
+    const shouldRenderFrame = createFpsGate(perf.targetFps);
 
     const state = {
       actualSpeed: 0.25,
@@ -75,7 +76,7 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
     const resize = () => {
       w = window.innerWidth;
       h = window.innerHeight;
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       canvas.width = w * dpr;
       canvas.height = h * dpr;
       canvas.style.width = `${w}px`;
@@ -84,9 +85,17 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
       state.smoothMouse = { x: w / 2, y: h / 2 };
     };
 
+    let w = 0;
+    let h = 0;
     let last = performance.now();
 
     const render = (now) => {
+      // FPS gate — skip frame if too soon
+      if (!shouldRenderFrame(now)) {
+        raf = requestAnimationFrame(render);
+        return;
+      }
+
       const delta = Math.min((now - last) / 1000, 0.05);
       last = now;
 
@@ -147,15 +156,25 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
         const screenX = cx - shiftX * depthFactor + px * scale;
         const screenY = cy - shiftY * depthFactor + py * scale;
 
-        const grad = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, size2d);
-        grad.addColorStop(0, `rgba(255, 255, 255, ${alpha * 0.95})`);
-        grad.addColorStop(0.25, `rgba(${fr}, ${fg}, ${fb}, ${alpha * 0.75})`);
-        grad.addColorStop(0.55, `rgba(${fr}, ${fg}, ${fb}, ${alpha * 0.25})`);
-        grad.addColorStop(1, `rgba(${fr}, ${fg}, ${fb}, 0)`);
-        ctx.fillStyle = grad;
+        // Early bounds check — skip off-screen particles
+        if (screenX < -size2d || screenX > w + size2d || screenY < -size2d || screenY > h + size2d) return;
+
+        // Use simple filled circles with globalAlpha instead of radial gradients
+        // for massive CPU savings (eliminates ~1000+ gradient allocations/frame)
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.fillStyle = `rgb(${fr}, ${fg}, ${fb})`;
         ctx.beginPath();
         ctx.arc(screenX, screenY, size2d, 0, Math.PI * 2);
         ctx.fill();
+
+        // Bright center dot
+        if (size2d > 1) {
+          ctx.globalAlpha = alpha * 0.6;
+          ctx.fillStyle = '#fff';
+          ctx.beginPath();
+          ctx.arc(screenX, screenY, size2d * 0.3, 0, Math.PI * 2);
+          ctx.fill();
+        }
       });
 
       // RINGS (14 evenly spaced LineLoop rings from the shader)
@@ -180,13 +199,21 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
         ctx.stroke();
       }
 
+      ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
       raf = requestAnimationFrame(render);
     };
 
     const onScroll = () => apiRef.current?.triggerWarp();
+    let mouseRaf = 0;
+    let nextMouse = null;
     const onMouseMove = (e) => {
-      state.mouse = { x: e.clientX, y: e.clientY, active: true };
+      nextMouse = { x: e.clientX, y: e.clientY, active: true };
+      if (mouseRaf) return;
+      mouseRaf = requestAnimationFrame(() => {
+        mouseRaf = 0;
+        if (nextMouse) state.mouse = nextMouse;
+      });
     };
 
     resize();
@@ -197,6 +224,7 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
 
     return () => {
       cancelAnimationFrame(raf);
+      if (mouseRaf) cancelAnimationFrame(mouseRaf);
       window.removeEventListener('resize', resize);
       window.removeEventListener('mousemove', onMouseMove);
       scrollRef?.current?.removeEventListener('scroll', onScroll);

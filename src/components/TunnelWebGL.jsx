@@ -4,7 +4,7 @@ import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { AURORA_GLSL, AURORA_HEX } from '../constants/auroraTheme';
-import { createFpsGate, getGraphicsProfile, shouldRenderGraphics } from '../utils/graphicsPerf';
+import { createFpsGate, debounce, getGraphicsProfile, shouldRenderGraphics } from '../utils/graphicsPerf';
 
 const TUNNEL_LENGTH = 480;
 
@@ -309,12 +309,16 @@ export default function TunnelWebGL({ scrollRef, activeSectionId, paused = false
     };
 
     const onScroll = () => apiRef.current?.triggerWarp();
+    let mouseRafQueued = false;
     const onMouseMove = (e) => {
       state.mouse.x = (e.clientX / window.innerWidth - 0.5) * 2;
       state.mouse.y = -(e.clientY / window.innerHeight - 0.5) * 2;
+      if (mouseRafQueued) return;
+      mouseRafQueued = true;
+      requestAnimationFrame(() => { mouseRafQueued = false; });
     };
 
-    let last = performance.now();
+    let lastTime = performance.now();
 
     const animate = (now) => {
       if (disposed) return;
@@ -333,8 +337,8 @@ export default function TunnelWebGL({ scrollRef, activeSectionId, paused = false
 
       animationId = requestAnimationFrame(animate);
 
-      const delta = Math.min((now - last) / 1000, 0.05);
-      last = now;
+      const delta = Math.min((now - lastTime) / 1000, 0.05);
+      lastTime = now;
 
       // Speed lerp back to 0.25 over 900ms
       if (now > state.warpUntil) {
@@ -380,10 +384,11 @@ export default function TunnelWebGL({ scrollRef, activeSectionId, paused = false
     }
 
     resize();
-    const ro = new ResizeObserver(resize);
+    const debouncedResize = debounce(resize, 200);
+    const ro = new ResizeObserver(debouncedResize);
     ro.observe(container);
-    window.addEventListener('resize', resize);
-    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('resize', debouncedResize);
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
     scrollRef?.current?.addEventListener('scroll', onScroll, { passive: true });
 
     animationId = requestAnimationFrame(animate);
@@ -393,7 +398,7 @@ export default function TunnelWebGL({ scrollRef, activeSectionId, paused = false
       cancelAnimationFrame(animationId);
       clearTimeout(pauseTimer);
       ro.disconnect();
-      window.removeEventListener('resize', resize);
+      window.removeEventListener('resize', debouncedResize);
       window.removeEventListener('mousemove', onMouseMove);
       scrollRef?.current?.removeEventListener('scroll', onScroll);
       

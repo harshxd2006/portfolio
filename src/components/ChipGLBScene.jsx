@@ -76,6 +76,11 @@ function AnimatedChipModel({ pausedRef }) {
     };
   }, [actions, animations]);
 
+  // Invalidate on each frame to keep demand-mode rendering
+  useFrame(({ invalidate }) => {
+    if (!pausedRef.current) invalidate();
+  });
+
   return (
     <group ref={rootRef}>
       <Center>
@@ -90,6 +95,7 @@ function ChipCamera({ pausedRef }) {
 
   useFrame((state, delta) => {
     if (pausedRef.current) return;
+    state.invalidate();
     angle.current += delta * 0.12;
     const { camera } = state;
     camera.position.set(
@@ -117,14 +123,14 @@ function ChipCanvas({ pausedRef, perf }) {
   return (
     <Canvas
       className="h-full w-full"
-      dpr={perf.pixelRatio}
+      dpr={[0.75, perf.lowPower ? 1 : 1.25]}
       camera={{ position: [0, 1.2, 6], fov: 42, near: 0.1, far: 100 }}
       gl={{
         antialias: perf.antialias,
         alpha: false,
         powerPreference: 'high-performance',
       }}
-      frameloop="always"
+      frameloop="demand"
       performance={{ min: 0.5, debounce: 200 }}
       onCreated={({ gl }) => {
         gl.setClearColor(0x000000, 1);

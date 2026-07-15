@@ -48,9 +48,9 @@ export default function TunnelPostFX({ pausedRef, enabled = true }) {
     composerRef.current?.setSize(size.width, size.height);
   }, [size]);
 
-  useFrame(() => {
+  useFrame(({ invalidate }) => {
     if (!enabled || pausedRef.current || !composerRef.current) return;
-    gl.clear();
+    invalidate();
     composerRef.current.render();
   }, 1);
 

@@ -327,6 +327,7 @@ body {
   height: 100%;
   pointer-events: none;
   background: #000000;
+  transform: translateZ(0);
 }
 
 .tunnel-canvas-host canvas {
@@ -493,6 +494,7 @@ body {
   scroll-snap-stop: always;
   content-visibility: auto;
   contain-intrinsic-size: 100dvh;
+  contain: content;
 }
 
 .cinematic-stage {
@@ -507,8 +509,101 @@ body {
   contain: layout paint style;
   transform: translateZ(0);
   background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.46), rgba(0, 0, 0, 0.24) 42%, rgba(0, 0, 0, 0.42)),
-    radial-gradient(circle at 50% 46%, rgba(0, 0, 0, 0.02), rgba(0, 0, 0, 0.35) 78%);
+    linear-gradient(90deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.14) 42%, rgba(0, 0, 0, 0.24)),
+    radial-gradient(circle at 50% 46%, transparent, rgba(0, 0, 0, 0.22) 78%);
+}
+
+.cinematic-stage.is-intro-active {
+  background: transparent;
+}
+
+.spline-tunnel-blend {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.spline-canvas-host {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.spline-canvas-blend {
+  width: 100%;
+  height: 100%;
+  mix-blend-mode: screen;
+  opacity: 0.92;
+}
+
+.spline-canvas-host canvas {
+  background: transparent !important;
+}
+
+.spline-intro-text {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: clamp(12px, 2vh, 20px);
+  padding: clamp(24px, 6vw, 72px);
+  padding-left: clamp(44px, 8vw, 120px);
+  max-width: min(520px, 46vw);
+  pointer-events: none;
+  text-shadow: 0 18px 58px rgba(0, 0, 0, 0.85);
+}
+
+.spline-intro-name {
+  margin: 0;
+  font-family: var(--font-syne);
+  font-size: clamp(48px, 7vw, 96px);
+  font-weight: 800;
+  line-height: 0.92;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #fafafa 0%, #a3a3a3 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.spline-intro-subtitle {
+  margin: 0;
+  max-width: 420px;
+  color: rgba(255, 255, 255, 0.78);
+  font-family: var(--font-dm);
+  font-size: clamp(16px, 1.8vw, 22px);
+  font-weight: 300;
+  line-height: 1.55;
+}
+
+@media (max-width: 767px) {
+  .spline-intro-text {
+    align-items: center;
+    justify-content: flex-end;
+    max-width: 100%;
+    padding: 0 26px clamp(96px, 18vh, 140px);
+    text-align: center;
+  }
+
+  .spline-intro-name {
+    font-size: clamp(40px, 12vw, 64px);
+  }
+
+  .spline-intro-subtitle {
+    max-width: 100%;
+    font-size: clamp(15px, 4.2vw, 20px);
+  }
+
+  .spline-canvas-blend {
+    opacity: 0.85;
+  }
 }
 
 .cinematic-panel-content {
@@ -523,7 +618,6 @@ body {
   text-shadow: 0 18px 58px rgba(0, 0, 0, 0.85);
   pointer-events: auto;
   contain: layout paint style;
-  will-change: transform, opacity;
 }
 
 .cinematic-panel-content.is-centered {
@@ -737,7 +831,6 @@ body {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   transition: background-color 240ms ease, border-color 240ms ease, transform 240ms ease;
-  will-change: transform;
 }
 
 .cinematic-dot.is-active {

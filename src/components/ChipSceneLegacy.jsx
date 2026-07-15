@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { createFpsGate, getGraphicsProfile, shouldRenderGraphics } from '../utils/graphicsPerf';
+import { createFpsGate, debounce, getGraphicsProfile, shouldRenderGraphics } from '../utils/graphicsPerf';
 
 function createMarkTexture(letter = 'H') {
   const canvas = document.createElement('canvas');
@@ -137,7 +137,7 @@ function initChipScene(mount, formationRef, isDisposed) {
   composer.addPass(renderPass);
   composer.addPass(bloomPass);
 
-  const starCount = perf.lowPower ? 500 : 900;
+  const starCount = perf.lowPower ? 400 : 500;
   const starPositions = new Float32Array(starCount * 3);
   for (let i = 0; i < starCount; i++) {
     starPositions[i * 3] = THREE.MathUtils.randFloatSpread(100);
@@ -319,9 +319,10 @@ function initChipScene(mount, formationRef, isDisposed) {
     );
   };
 
-  const ro = new ResizeObserver(resize);
+  const debouncedResize = debounce(resize, 200);
+  const ro = new ResizeObserver(debouncedResize);
   ro.observe(mount);
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', debouncedResize);
 
   const animate = (now) => {
     if (isDisposed()) return;
@@ -419,7 +420,7 @@ function initChipScene(mount, formationRef, isDisposed) {
     cancelAnimationFrame(animationId);
     clearTimeout(pauseTimer);
     ro.disconnect();
-    window.removeEventListener('resize', resize);
+    window.removeEventListener('resize', debouncedResize);
     composer.dispose();
     disposables.forEach((item) => item.dispose?.());
     renderer.dispose();

@@ -1,22 +1,38 @@
-import { useGLTF } from '@react-three/drei';
+const assets = ['/models/chip.glb', '/models/tunnel.glb'];
+let scheduled = false;
 
 /**
- * Warm GPU assets during loader — reduces first-frame hitch.
- * Only preload assets if they are actually available on the server to avoid
- * throwing errors during module import when files are missing (dev server
- * may return HTML for missing files which breaks the GLTF parser).
+ * Warm GPU assets after the loader without pulling drei/three into the loader
+ * chunk. Missing files are ignored because the runtime has visual fallbacks.
  */
-const assets = ['/models/chip.glb', '/models/tunnel.glb'];
-assets.forEach((url) => {
-	// Fire-and-forget: check existence then preload if present
-	(async () => {
-		try {
-			const res = await fetch(url, { method: 'HEAD' });
-			if (res.ok) {
-				useGLTF.preload(url);
-			}
-		} catch (e) {
-			// ignore network errors — we'll fallback to the canvas 2D or legacy scene
-		}
-	})();
-});
+export function scheduleAssetPreload() {
+  if (scheduled || typeof window === 'undefined') return;
+  scheduled = true;
+
+  const preload = async () => {
+    const { useGLTF } = await import('@react-three/drei');
+
+    await Promise.allSettled(
+      assets.map(async (url) => {
+        const res = await fetch(url, { method: 'HEAD' });
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && !contentType.includes('text/html')) {
+          useGLTF.preload(url);
+        }
+      }),
+    );
+  };
+
+  const run = () => {
+    preload().catch(() => {
+      // Scene components already include fallbacks for unavailable assets.
+    });
+  };
+
+  if ('requestIdleCallback' in window) {
+    window.requestIdleCallback(run, { timeout: 1800 });
+    return;
+  }
+
+  window.setTimeout(run, 900);
+}

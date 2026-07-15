@@ -1,12 +1,16 @@
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
-import '../utils/preloadAssets';
+import { scheduleAssetPreload } from '../utils/preloadAssets';
 
 export default function Loader({ onComplete }) {
   useEffect(() => {
     const timer = window.setTimeout(onComplete, 1600);
     return () => window.clearTimeout(timer);
   }, [onComplete]);
+
+  useEffect(() => {
+    scheduleAssetPreload();
+  }, []);
 
   return (
     <motion.div

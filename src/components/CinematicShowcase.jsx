@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useMotionValueEvent } from 'framer-motion';
-import { useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { FaGithub, FaInstagram, FaLinkedinIn } from 'react-icons/fa6';
+import { SplineSceneBasic } from './ui/demo';
 
 const transition = {
   duration: 0.75,
@@ -50,8 +51,10 @@ const panels = [
     direction: 1,
     align: 'center',
     items: [
-      { type: 'hero', text: 'HARSH' },
-      { type: 'introSubtitle', text: 'B.Tech Engineering Physics · NIT Hamirpur' },
+      {
+        type: 'custom',
+        render: () => <SplineSceneBasic />,
+      },
     ],
   },
   {
@@ -63,7 +66,7 @@ const panels = [
       {
         type: 'body',
         text:
-          'From AI credit platforms to autonomous robots — I ship end-to-end systems that solve real problems. Currently in my second year at NIT Hamirpur, competing nationally and building in public.',
+          'From AI credit platforms to autonomous robots — I ship end-to-end systems that solve real problems. Currently in my third year at NIT Hamirpur, competing nationally and building in public.',
       },
     ],
   },
@@ -195,7 +198,7 @@ function itemClass(type) {
   return classes[type] || 'cinematic-body';
 }
 
-function CinematicItem({ item, direction, order }) {
+const CinematicItem = memo(function CinematicItem({ item, direction, order }) {
   const custom = { direction, order };
 
   if (item.type === 'icons') {
@@ -221,6 +224,21 @@ function CinematicItem({ item, direction, order }) {
     );
   }
 
+  if (item.type === 'custom') {
+    return (
+      <motion.div
+        className="w-full relative z-10"
+        custom={custom}
+        variants={itemVariants}
+        initial="enter"
+        animate="center"
+        exit="exit"
+      >
+        {item.render()}
+      </motion.div>
+    );
+  }
+
   const content = item.href ? (
     <a href={item.href} target={item.href.startsWith('http') ? '_blank' : undefined} rel={item.href.startsWith('http') ? 'noreferrer' : undefined}>
       {item.text}
@@ -241,13 +259,19 @@ function CinematicItem({ item, direction, order }) {
       {content}
     </motion.div>
   );
-}
+});
 
-function ActivePanel({ panel, index }) {
+const ActivePanel = memo(function ActivePanel({ panel, index }) {
+  const className = useMemo(
+    () =>
+      `cinematic-panel-content ${panel.align === 'center' ? 'is-centered' : ''} ${panel.compact ? 'is-compact' : ''} ${panel.id === 'intro' ? 'is-intro' : ''}`,
+    [panel.align, panel.compact, panel.id],
+  );
+
   return (
     <motion.div
       key={panel.id}
-      className={`cinematic-panel-content ${panel.align === 'center' ? 'is-centered' : ''} ${panel.compact ? 'is-compact' : ''} ${panel.id === 'intro' ? 'is-intro' : ''}`}
+      className={className}
       custom={panel.direction}
       variants={panelVariants}
       initial="enter"
@@ -276,7 +300,7 @@ function ActivePanel({ panel, index }) {
       )}
     </motion.div>
   );
-}
+});
 
 export default function CinematicShowcase({ scrollYProgress }) {
   const [activePanel, setActivePanel] = useState(0);
@@ -294,7 +318,7 @@ export default function CinematicShowcase({ scrollYProgress }) {
         <section key={id} id={id} className="cinematic-snap-panel" aria-hidden="true" />
       ))}
 
-      <div className="cinematic-stage" aria-live="polite">
+      <div className={`cinematic-stage ${activePanel === 0 ? 'is-intro-active' : ''}`} aria-live="polite">
         <AnimatePresence mode="wait" custom={panel.direction}>
           <ActivePanel key={panel.id} panel={panel} index={activePanel} />
         </AnimatePresence>

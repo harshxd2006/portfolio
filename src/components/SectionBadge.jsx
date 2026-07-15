@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { useInView } from 'framer-motion';
 
 const VIEWPORT = { once: true, margin: '0px 0px -80px 0px' };
 const COUNT_DURATION_MS = 600;
 const COUNT_STEPS = 24;
 
-export default function SectionBadge({ number, title }) {
+function SectionBadge({ number, title }) {
   const ref = useRef(null);
   const isInView = useInView(ref, VIEWPORT);
   const target = Number(number);
@@ -47,3 +47,5 @@ export default function SectionBadge({ number, title }) {
     </p>
   );
 }
+
+export default memo(SectionBadge);

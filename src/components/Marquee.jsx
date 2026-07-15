@@ -2,9 +2,14 @@ const DEFAULT_TEXT =
   'ENGINEERING PHYSICS · FULL STACK AI · ROBOTICS · NIT HAMIRPUR · HACKATHON WINNER · OPEN TO WORK · ';
 
 const REPEAT_COUNT = 4;
+const contentCache = new Map();
 
 function buildTrackContent(text, repeatCount) {
-  return Array.from({ length: repeatCount }, () => text).join('');
+  const cacheKey = `${repeatCount}:${text}`;
+  if (!contentCache.has(cacheKey)) {
+    contentCache.set(cacheKey, Array.from({ length: repeatCount }, () => text).join(''));
+  }
+  return contentCache.get(cacheKey);
 }
 
 export default function Marquee({
