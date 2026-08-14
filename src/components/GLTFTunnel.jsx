@@ -134,6 +134,16 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, travelRef }) {
     [],
   );
 
+  useEffect(() => {
+    return () => {
+      tubeGeo.dispose();
+      ringGeo.dispose();
+      tubeMat.dispose();
+      ringMat.dispose();
+      linesTex.dispose();
+    };
+  }, [tubeGeo, ringGeo, tubeMat, ringMat, linesTex]);
+
   useFrame((state, delta) => {
     if (!shouldRenderGraphics()) return;
 
@@ -174,8 +184,11 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, travelRef }) {
     state.camera.position.z = THREE.MathUtils.damp(state.camera.position.z, targetCamZ, dampSpeed, delta);
     const baseFov = isMobile ? 74 : 68;
     const targetFov = baseFov + scrollDepth * 8;
-    state.camera.fov = THREE.MathUtils.damp(state.camera.fov, targetFov, dampSpeed, delta);
-    state.camera.updateProjectionMatrix();
+    const newFov = THREE.MathUtils.damp(state.camera.fov, targetFov, dampSpeed, delta);
+    if (Math.abs(state.camera.fov - newFov) > 0.01) {
+      state.camera.fov = newFov;
+      state.camera.updateProjectionMatrix();
+    }
   });
 
   return (
