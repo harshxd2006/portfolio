@@ -25,14 +25,19 @@ export default function TunnelCanvas2D({ scrollYProgress, scrollRef }) {
   const warpRef = useRef(0);
   const warpUntilRef = useRef(0);
 
-  useMotionValueEvent(scrollYProgress, 'change', (latest) => {
-    const delta = latest - lastProgressRef.current;
-    scrollDepthRef.current = latest;
-    lastProgressRef.current = latest;
-    if (delta > 0.001) {
-      warpRef.current = 1;
-      warpUntilRef.current = performance.now() + 700;
+  const updateScrollDepth = (nextProgress) => {
+    const delta = nextProgress - lastProgressRef.current;
+    scrollDepthRef.current = nextProgress;
+    lastProgressRef.current = nextProgress;
+    const absDelta = Math.abs(delta);
+    if (absDelta > 0.0005) {
+      warpRef.current = Math.min(1.2, warpRef.current + absDelta * 14);
+      warpUntilRef.current = performance.now() + 500;
     }
+  };
+
+  useMotionValueEvent(scrollYProgress, 'change', (latest) => {
+    updateScrollDepth(latest);
   });
 
   useEffect(() => {
@@ -44,13 +49,7 @@ export default function TunnelCanvas2D({ scrollYProgress, scrollRef }) {
     const onScroll = () => {
       const max = el.scrollHeight - el.clientHeight;
       const next = max > 0 ? el.scrollTop / max : 0;
-      const delta = next - lastProgressRef.current;
-      scrollDepthRef.current = next;
-      lastProgressRef.current = next;
-      if (delta > 0.001) {
-        warpRef.current = 1;
-        warpUntilRef.current = performance.now() + 700;
-      }
+      updateScrollDepth(next);
     };
 
     el.addEventListener('scroll', onScroll, { passive: true });
@@ -126,27 +125,35 @@ export default function TunnelCanvas2D({ scrollYProgress, scrollRef }) {
       const scrollDepth = scrollDepthRef.current ?? 0;
 
       if (now > warpUntilRef.current) {
-        warpRef.current = lerp(warpRef.current, 0, 0.08);
+        warpRef.current = lerp(warpRef.current, 0, Math.min(1, delta * 6));
       }
 
       const scrollTravel = scrollDepth * TUNNEL_LENGTH * SCROLL_DEPTH_MULTIPLIER;
       const warpBoost = warpRef.current * 120;
       const targetTravel = scrollTravel + warpBoost;
-      state.travel = lerp(state.travel, targetTravel, 0.16);
+      const travelDamp = 1 - Math.exp(-12 * delta);
+      state.travel = lerp(state.travel, targetTravel, travelDamp);
 
       if (scrollDepth < 0.02) {
         state.travel += delta * 18;
       }
 
-      state.rotation += delta * (0.002 + scrollDepth * 0.006) * 60;
+      const snakeX = Math.sin(state.travel * 0.055) * 65;
+      const snakeY = Math.cos(state.travel * 0.042) * 45;
+      const snakeRoll = Math.sin(state.travel * 0.055) * 0.015;
+
+      state.rotation += delta * (0.002 + scrollDepth * 0.006) * 60 + snakeRoll;
 
       state.smoothMouse.x = lerp(state.smoothMouse.x, state.mouse.x, 0.05);
       state.smoothMouse.y = lerp(state.smoothMouse.y, state.mouse.y, 0.05);
       const mouseActive = state.mouse.active;
 
       const depthSway = 1 - scrollDepth * 0.4;
-      const shiftX = mouseActive ? (state.smoothMouse.x - w / 2) * 0.8 * depthSway : 0;
-      const shiftY = mouseActive ? (state.smoothMouse.y - h / 2) * 0.8 * depthSway : 0;
+      const mouseXShift = mouseActive ? (state.smoothMouse.x - w / 2) * 0.8 * depthSway : 0;
+      const mouseYShift = mouseActive ? (state.smoothMouse.y - h / 2) * 0.8 * depthSway : 0;
+
+      const shiftX = mouseXShift - snakeX * depthSway;
+      const shiftY = mouseYShift - snakeY * depthSway;
 
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, w, h);

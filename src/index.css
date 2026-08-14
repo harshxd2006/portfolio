@@ -852,21 +852,32 @@ body {
 }
 
 .cinematic-hint,
-.cinematic-scroll-indicator {
-  color: rgba(255, 255, 255, 0.55);
+.cinematic-scroll-indicator,
+.cinematic-fixed-scroll-indicator {
+  color: rgba(255, 255, 255, 0.65);
   font-family: var(--font-dm);
   font-weight: 300;
-  font-size: clamp(13px, 1vw, 15px);
+  font-size: clamp(12px, 1.1vw, 15px);
   letter-spacing: 0.18em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.cinematic-scroll-indicator {
+.cinematic-fixed-scroll-indicator {
   position: fixed;
   left: 50%;
-  bottom: clamp(22px, 5vh, 52px);
+  bottom: clamp(16px, 4.5vh, 44px);
   transform: translateX(-50%);
+  z-index: 40;
   pointer-events: none;
+}
+
+@media (max-width: 767px) {
+  .cinematic-fixed-scroll-indicator {
+    bottom: calc(16px + env(safe-area-inset-bottom, 12px));
+    font-size: 13px;
+    letter-spacing: 0.15em;
+  }
 }
 
 .cinematic-footer {

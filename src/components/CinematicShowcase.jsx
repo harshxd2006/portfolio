@@ -261,7 +261,7 @@ const CinematicItem = memo(function CinematicItem({ item, direction, order }) {
   );
 });
 
-const ActivePanel = memo(function ActivePanel({ panel, index }) {
+const ActivePanel = memo(function ActivePanel({ panel }) {
   const className = useMemo(
     () =>
       `cinematic-panel-content ${panel.align === 'center' ? 'is-centered' : ''} ${panel.compact ? 'is-compact' : ''} ${panel.id === 'intro' ? 'is-intro' : ''}`,
@@ -286,18 +286,6 @@ const ActivePanel = memo(function ActivePanel({ panel, index }) {
           order={itemIndex}
         />
       ))}
-      {index < panels.length - 1 && (
-        <motion.div
-          className="cinematic-scroll-indicator scroll-hint-text"
-          custom={{ direction: panel.direction, order: panel.items.length }}
-          variants={itemVariants}
-          initial="enter"
-          animate="center"
-          exit="exit"
-        >
-          {panel.id === 'intro' ? 'Scroll to explore ↓' : 'Scroll ↓'}
-        </motion.div>
-      )}
     </motion.div>
   );
 });
@@ -320,8 +308,14 @@ export default function CinematicShowcase({ scrollYProgress }) {
 
       <div className={`cinematic-stage ${activePanel === 0 ? 'is-intro-active' : ''}`} aria-live="polite">
         <AnimatePresence mode="wait" custom={panel.direction}>
-          <ActivePanel key={panel.id} panel={panel} index={activePanel} />
+          <ActivePanel key={panel.id} panel={panel} />
         </AnimatePresence>
+
+        {activePanel < panels.length - 1 && (
+          <div className="cinematic-fixed-scroll-indicator scroll-hint-text">
+            {activePanel === 0 ? 'Scroll to explore ↓' : 'Scroll ↓'}
+          </div>
+        )}
       </div>
 
       <nav className="cinematic-dots" aria-label="Active panel">

@@ -20,7 +20,7 @@ export function getGraphicsProfile() {
     /** Use Canvas 2D tunnel instead of WebGL — much lighter on phones/tablets. */
     prefer2DTunnel: isMobile || lowMemory || cores <= 2,
     pixelRatio: Math.min(window.devicePixelRatio || 1, lowPower ? 1 : 1.25),
-    targetFps: lowPower ? 24 : 30,
+    targetFps: lowPower ? 45 : 60,
     antialias: !lowPower,
     bloomScale: lowPower ? 0.3 : 0.4,
     enableLut: false,

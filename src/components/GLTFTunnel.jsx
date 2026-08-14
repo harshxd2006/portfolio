@@ -8,57 +8,49 @@ import { getGraphicsProfile, shouldRenderGraphics } from '../utils/graphicsPerf'
 
 useTexture.preload('/textures/tunnel-lines-min.jpg');
 
-const TUNNEL_LENGTH = 120;
+const TUNNEL_LENGTH = 200;
 const TUNNEL_RADIUS = 14;
-const SCROLL_TRAVEL_RANGE = 320;
+const SCROLL_TRAVEL_RANGE = 360;
 
 function createLinesMaterial(linesTex) {
   linesTex.colorSpace = THREE.SRGBColorSpace;
   linesTex.wrapS = THREE.RepeatWrapping;
   linesTex.wrapT = THREE.RepeatWrapping;
-  linesTex.repeat.set(4, 24);
-  linesTex.anisotropy = 2;
+  linesTex.repeat.set(5, 32);
+  linesTex.anisotropy = 1;
 
-  return new THREE.MeshStandardMaterial({
+  return new THREE.MeshBasicMaterial({
     map: linesTex,
-    emissiveMap: linesTex,
-    emissive: new THREE.Color(0x34ffa8),
-    emissiveIntensity: 1.85,
-    color: new THREE.Color(0x03060a),
-    metalness: 0.08,
-    roughness: 0.92,
+    color: new THREE.Color(0x34ffa8),
     side: THREE.BackSide,
     transparent: true,
-    opacity: 1,
+    opacity: 0.95,
   });
 }
 
-function AuroraTunnelTube({ linesTex, scrollDepthRef, warpRef, warpDecayRef }) {
+function AuroraTunnelTube({ linesTex, scrollDepthRef, travelRef }) {
   const tubeRef = useRef();
   const ringsRef = useRef();
-  const emissiveRef = useRef(new THREE.Color(0x34ffa8));
-  const hueRef = useRef(0);
-  const travelRef = useRef(0);
   const perf = getGraphicsProfile();
 
   const { tubeGeo, ringGeos } = useMemo(() => {
-    const segments = perf.lowPower ? 32 : 48;
+    const segments = perf.lowPower ? 24 : 32;
     const tube = new THREE.CylinderGeometry(
       TUNNEL_RADIUS,
       TUNNEL_RADIUS,
-      TUNNEL_LENGTH,
+      TUNNEL_LENGTH * 1.5,
       segments,
       1,
       true,
     );
     tube.rotateX(Math.PI / 2);
-    tube.translate(0, 0, -TUNNEL_LENGTH / 2);
+    tube.translate(0, 0, -TUNNEL_LENGTH * 0.65);
 
-    const ringCount = perf.lowPower ? 4 : 6;
-    const torusSegments = perf.lowPower ? 36 : 48;
+    const ringCount = perf.lowPower ? 8 : 12;
+    const torusSegments = perf.lowPower ? 24 : 32;
     const rings = [];
     for (let i = 0; i < ringCount; i += 1) {
-      const ring = new THREE.TorusGeometry(TUNNEL_RADIUS, 0.04, 6, torusSegments);
+      const ring = new THREE.TorusGeometry(TUNNEL_RADIUS, 0.06, 6, torusSegments);
       ring.rotateX(Math.PI / 2);
       rings.push(ring);
     }
@@ -73,7 +65,7 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, warpRef, warpDecayRef }) {
       new THREE.MeshBasicMaterial({
         color: AURORA_HEX.ring,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.4,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
       }),
@@ -81,55 +73,40 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, warpRef, warpDecayRef }) {
   );
 
   useFrame((state, delta) => {
-    const { invalidate, camera } = state;
-
     if (!shouldRenderGraphics()) return;
 
-    invalidate();
-
     const scrollDepth = scrollDepthRef.current ?? 0;
-    const warp = warpRef.current;
-
-    if (performance.now() > warpDecayRef.current) {
-      warpRef.current = THREE.MathUtils.lerp(warp, 0, 0.06);
-    }
-
-    const scrollTravel = scrollDepth * SCROLL_TRAVEL_RANGE;
-    const warpBoost = warpRef.current * 55;
-    const targetTravel = scrollTravel + warpBoost;
-    travelRef.current = THREE.MathUtils.lerp(travelRef.current, targetTravel, 0.16);
+    const targetTravel = scrollDepth * SCROLL_TRAVEL_RANGE;
+    travelRef.current = THREE.MathUtils.damp(travelRef.current, targetTravel, 8, delta);
 
     if (scrollDepth < 0.02) {
-      travelRef.current += delta * 1.2;
+      travelRef.current += delta * 2.5;
     }
 
     linesTex.offset.y = travelRef.current * 0.02;
 
-    hueRef.current = (hueRef.current + delta * (0.18 + scrollDepth * 0.35)) % 1;
-    const t = hueRef.current;
-    emissiveRef.current.setRGB(
-      THREE.MathUtils.lerp(0.2, 0.72, t),
-      THREE.MathUtils.lerp(1.0, 0.38, t),
-      THREE.MathUtils.lerp(0.66, 1.0, t),
-    );
-    tubeMat.emissive.copy(emissiveRef.current);
-    tubeMat.emissiveIntensity = THREE.MathUtils.lerp(1.5, 2.6, warpRef.current + scrollDepth * 0.35);
-
     if (tubeRef.current) {
-      tubeRef.current.rotation.z += delta * (0.01 + scrollDepth * 0.025) * (1 + warpRef.current * 0.5);
+      tubeRef.current.rotation.z += delta * (0.015 + scrollDepth * 0.03);
     }
 
     if (ringsRef.current) {
+      const spacing = TUNNEL_LENGTH / ringGeos.length;
       ringsRef.current.children.forEach((ring, i) => {
-        const z = -((travelRef.current * 1.4 + i * (TUNNEL_LENGTH / ringGeos.length)) % TUNNEL_LENGTH);
+        const rawZ = i * spacing - (travelRef.current * 1.5 % TUNNEL_LENGTH);
+        const z = -((rawZ % TUNNEL_LENGTH + TUNNEL_LENGTH) % TUNNEL_LENGTH);
         ring.position.z = z;
+        const ringTravel = travelRef.current + Math.abs(z);
+        ring.position.x = Math.sin(ringTravel * 0.05) * 2.2;
+        ring.position.y = Math.cos(ringTravel * 0.038) * 1.5;
       });
-      ringMat.opacity = 0.18 + warpRef.current * 0.22 + scrollDepth * 0.12;
+      ringMat.opacity = 0.2 + scrollDepth * 0.15;
     }
 
-    camera.position.z = THREE.MathUtils.lerp(camera.position.z, scrollDepth * 2.4 + warpRef.current * 0.2, 0.08);
-    camera.fov = THREE.MathUtils.lerp(camera.fov, 68 + scrollDepth * 10 + warpRef.current * 5, 0.06);
-    camera.updateProjectionMatrix();
+    const targetCamZ = scrollDepth * 2.4;
+    state.camera.position.z = THREE.MathUtils.damp(state.camera.position.z, targetCamZ, 8, delta);
+    const targetFov = 68 + scrollDepth * 8;
+    state.camera.fov = THREE.MathUtils.damp(state.camera.fov, targetFov, 8, delta);
+    state.camera.updateProjectionMatrix();
   });
 
   return (
@@ -144,20 +121,21 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, warpRef, warpDecayRef }) {
   );
 }
 
-function TunnelScene({ scrollDepthRef, warpRef, warpDecayRef }) {
+function TunnelScene({ scrollDepthRef, travelRef }) {
   const linesTex = useTexture('/textures/tunnel-lines-min.jpg');
   return (
     <AuroraTunnelTube
       linesTex={linesTex}
       scrollDepthRef={scrollDepthRef}
-      warpRef={warpRef}
-      warpDecayRef={warpDecayRef}
+      travelRef={travelRef}
     />
   );
 }
 
-function CameraRig({ scrollDepthRef }) {
+function CameraRig({ scrollDepthRef, travelRef }) {
   const mouse = useRef({ x: 0, y: 0 });
+  const lookAtRef = useRef(new THREE.Vector3(0, 0, -40));
+  const rollRef = useRef(0);
   const rafQueued = useRef(false);
 
   useEffect(() => {
@@ -176,53 +154,53 @@ function CameraRig({ scrollDepthRef }) {
     return () => window.removeEventListener('mousemove', onMove);
   }, []);
 
-  useFrame((state) => {
-    const { camera, invalidate } = state;
+  useFrame((state, delta) => {
+    const { camera } = state;
     const depth = scrollDepthRef.current ?? 0;
+    const travel = travelRef.current ?? 0;
     const sway = 1 - depth * 0.35;
-    camera.position.x = THREE.MathUtils.lerp(camera.position.x, mouse.current.x * 0.9 * sway, 0.05);
-    camera.position.y = THREE.MathUtils.lerp(camera.position.y, mouse.current.y * 0.5 * sway, 0.05);
-    camera.lookAt(camera.position.x, camera.position.y, -40 - depth * 30);
-    invalidate();
+
+    // Fast, fluid serpentine snake curve inside the infinite pipe
+    const snakeX = Math.sin(travel * 0.05) * 3.8;
+    const snakeY = Math.cos(travel * 0.038) * 2.4;
+
+    const targetX = snakeX + mouse.current.x * 0.8 * sway;
+    const targetY = snakeY + mouse.current.y * 0.45 * sway;
+
+    camera.position.x = THREE.MathUtils.damp(camera.position.x, targetX, 8, delta);
+    camera.position.y = THREE.MathUtils.damp(camera.position.y, targetY, 8, delta);
+
+    // Look ahead down the pipe curve
+    const aheadTravel = travel + 18;
+    const aheadX = Math.sin(aheadTravel * 0.05) * 4.4 + mouse.current.x * 0.8 * sway;
+    const aheadY = Math.cos(aheadTravel * 0.038) * 2.8 + mouse.current.y * 0.45 * sway;
+    const targetLookZ = -40 - depth * 30;
+
+    lookAtRef.current.x = THREE.MathUtils.damp(lookAtRef.current.x, aheadX, 8, delta);
+    lookAtRef.current.y = THREE.MathUtils.damp(lookAtRef.current.y, aheadY, 8, delta);
+    lookAtRef.current.z = THREE.MathUtils.damp(lookAtRef.current.z, targetLookZ, 8, delta);
+
+    // Bank angle applied cleanly via camera.up with persistent rollRef
+    const targetRoll = -Math.cos(travel * 0.05) * 0.14;
+    rollRef.current = THREE.MathUtils.damp(rollRef.current, targetRoll, 8, delta);
+    camera.up.set(Math.sin(rollRef.current), Math.cos(rollRef.current), 0);
+
+    camera.lookAt(lookAtRef.current);
   });
 
   return null;
 }
 
-function TunnelLights() {
-  return (
-    <>
-      <ambientLight intensity={0.4} color={AURORA_HEX.ambient} />
-      <directionalLight position={[0, 4, 2]} intensity={1.2} color={AURORA_HEX.key} />
-      <directionalLight position={[-5, 1, -8]} intensity={0.7} color={AURORA_HEX.rim} />
-      <pointLight position={[0, 0, -10]} intensity={0.6} color={AURORA_HEX.scan} distance={80} />
-    </>
-  );
-}
-
 export default function GLTFTunnel({ scrollYProgress, scrollRef }) {
   const scrollDepthRef = useRef(0);
-  const lastProgressRef = useRef(0);
-  const warpRef = useRef(0);
-  const warpDecayRef = useRef(0);
-  const invalidateRef = useRef(() => {});
-  const perf = getGraphicsProfile();
+  const travelRef = useRef(0);
 
-  const triggerWarp = () => {
-    warpRef.current = 1;
-    warpDecayRef.current = performance.now() + 700;
-    invalidateRef.current();
+  const updateScrollDepth = (nextProgress) => {
+    scrollDepthRef.current = nextProgress;
   };
 
   useMotionValueEvent(scrollYProgress, 'change', (latest) => {
-    const delta = latest - lastProgressRef.current;
-    scrollDepthRef.current = latest;
-    lastProgressRef.current = latest;
-    invalidateRef.current();
-
-    if (delta > 0.001) {
-      triggerWarp();
-    }
+    updateScrollDepth(latest);
   });
 
   useEffect(() => {
@@ -234,11 +212,7 @@ export default function GLTFTunnel({ scrollYProgress, scrollRef }) {
     const onScroll = () => {
       const max = el.scrollHeight - el.clientHeight;
       const next = max > 0 ? el.scrollTop / max : 0;
-      const delta = next - lastProgressRef.current;
-      scrollDepthRef.current = next;
-      lastProgressRef.current = next;
-      invalidateRef.current();
-      if (delta > 0.001) triggerWarp();
+      updateScrollDepth(next);
     };
 
     el.addEventListener('scroll', onScroll, { passive: true });
@@ -246,41 +220,32 @@ export default function GLTFTunnel({ scrollYProgress, scrollRef }) {
     return () => el.removeEventListener('scroll', onScroll);
   }, [scrollRef, scrollYProgress]);
 
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      if (scrollDepthRef.current < 0.98) invalidateRef.current();
-    }, 80);
-    return () => window.clearInterval(id);
-  }, []);
-
   return (
     <>
       <div className="tunnel-canvas-host" aria-hidden="true">
         <Canvas
           className="h-full w-full"
-          dpr={[0.75, perf.lowPower ? 1 : 1.25]}
-          frameloop="demand"
+          dpr={[0.75, 1.0]}
+          frameloop="always"
           performance={{ min: 0.5, max: 1 }}
           camera={{ position: [0, 0, 0], fov: 68, near: 0.1, far: 300 }}
           gl={{
-            antialias: perf.antialias,
+            antialias: false,
             alpha: false,
             powerPreference: 'high-performance',
           }}
-          onCreated={({ gl, invalidate }) => {
+          onCreated={({ gl }) => {
             gl.setClearColor(0x000000, 1);
             gl.toneMapping = THREE.ACESFilmicToneMapping;
             gl.toneMappingExposure = 1.1;
-            invalidateRef.current = invalidate;
           }}
         >
           <color attach="background" args={['#000000']} />
-          <fog attach="fog" args={['#000000', 18, 95]} />
-          <TunnelLights />
+          <fog attach="fog" args={['#000000', 25, 170]} />
           <Suspense fallback={null}>
-            <TunnelScene scrollDepthRef={scrollDepthRef} warpRef={warpRef} warpDecayRef={warpDecayRef} />
+            <TunnelScene scrollDepthRef={scrollDepthRef} travelRef={travelRef} />
           </Suspense>
-          <CameraRig scrollDepthRef={scrollDepthRef} />
+          <CameraRig scrollDepthRef={scrollDepthRef} travelRef={travelRef} />
         </Canvas>
       </div>
       <div className="tunnel-edge-vignette pointer-events-none fixed inset-0 z-[1]" aria-hidden="true" />
