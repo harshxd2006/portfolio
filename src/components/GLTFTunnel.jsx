@@ -104,7 +104,9 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, travelRef }) {
 
     const targetCamZ = scrollDepth * 2.4;
     state.camera.position.z = THREE.MathUtils.damp(state.camera.position.z, targetCamZ, 8, delta);
-    const targetFov = 68 + scrollDepth * 8;
+    const isMobile = state.size.width <= 768;
+    const baseFov = isMobile ? 74 : 68;
+    const targetFov = baseFov + scrollDepth * 8;
     state.camera.fov = THREE.MathUtils.damp(state.camera.fov, targetFov, 8, delta);
     state.camera.updateProjectionMatrix();
   });
