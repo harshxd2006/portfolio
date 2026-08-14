@@ -1,5 +1,6 @@
 import { Component, lazy, Suspense } from 'react';
 import TunnelCanvas2D from './TunnelCanvas2D';
+import { getGraphicsProfile } from '../utils/graphicsPerf';
 
 const TunnelWebGL = lazy(() => import('./GLTFTunnel'));
 
@@ -22,6 +23,12 @@ class TunnelErrorBoundary extends Component {
 }
 
 export default function BackgroundCanvas(props) {
+  const perf = getGraphicsProfile();
+
+  if (perf.prefer2DTunnel) {
+    return <TunnelCanvas2D {...props} />;
+  }
+
   return (
     <TunnelErrorBoundary {...props}>
       <Suspense fallback={<TunnelCanvas2D {...props} />}>

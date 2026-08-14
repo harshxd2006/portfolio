@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useMotionValueEvent, useScroll } from 'framer-motion';
+import { AnimatePresence, motion, useScroll } from 'framer-motion';
 import { lazy, memo, Suspense, useCallback, useRef, useState } from 'react';
 import BackgroundCanvas from './components/BackgroundCanvas';
 import Loader from './components/Loader';
@@ -9,16 +9,10 @@ const CinematicShowcase = lazy(() => import('./components/CinematicShowcase'));
 
 const MainContent = memo(function MainContent() {
   const containerRef = useRef(null);
-  const [isIntro, setIsIntro] = useState(true);
 
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ["start start", "end end"]
-  });
-
-  useMotionValueEvent(scrollYProgress, 'change', (latest) => {
-    const nextIsIntro = latest < 0.06;
-    setIsIntro((current) => (current === nextIsIntro ? current : nextIsIntro));
+    offset: ['start start', 'end end'],
   });
 
   return (
@@ -29,15 +23,11 @@ const MainContent = memo(function MainContent() {
       animate="show"
     >
       <div className="background-layer fixed inset-0" style={{ pointerEvents: 'none' }}>
-        <BackgroundCanvas
-          activeSectionId="cinematic"
-          paused={false}
-          isIntro={isIntro}
-        />
+        <BackgroundCanvas scrollYProgress={scrollYProgress} scrollRef={containerRef} />
       </div>
 
       <Suspense fallback={null}>
-        <AmbientPlayer />
+        <AmbientPlayer scrollRef={containerRef} />
       </Suspense>
 
       <main

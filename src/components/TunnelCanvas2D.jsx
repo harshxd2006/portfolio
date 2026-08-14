@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
+import { useMotionValueEvent } from 'framer-motion';
 import { AURORA_RGB, lerpAuroraRgb } from '../constants/auroraTheme';
-import { createFpsGate, getGraphicsProfile } from '../utils/graphicsPerf';
+import { createFpsGate, getGraphicsProfile, shouldRenderGraphics } from '../utils/graphicsPerf';
 
 const TUNNEL_LENGTH = 480;
+const SCROLL_DEPTH_MULTIPLIER = 2.4;
 
 function lerp(a, b, t) {
   return a + (b - a) * t;
@@ -16,17 +18,45 @@ function mod(n, m) {
   return ((n % m) + m) % m;
 }
 
-export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
+export default function TunnelCanvas2D({ scrollYProgress, scrollRef }) {
   const canvasRef = useRef(null);
-  const apiRef = useRef(null);
-  const prevSectionRef = useRef(activeSectionId);
+  const scrollDepthRef = useRef(0);
+  const lastProgressRef = useRef(0);
+  const warpRef = useRef(0);
+  const warpUntilRef = useRef(0);
+
+  useMotionValueEvent(scrollYProgress, 'change', (latest) => {
+    const delta = latest - lastProgressRef.current;
+    scrollDepthRef.current = latest;
+    lastProgressRef.current = latest;
+    if (delta > 0.001) {
+      warpRef.current = 1;
+      warpUntilRef.current = performance.now() + 700;
+    }
+  });
 
   useEffect(() => {
-    if (prevSectionRef.current !== activeSectionId) {
-      apiRef.current?.triggerWarp();
-      prevSectionRef.current = activeSectionId;
-    }
-  }, [activeSectionId]);
+    if (scrollYProgress) return undefined;
+
+    const el = scrollRef?.current;
+    if (!el) return undefined;
+
+    const onScroll = () => {
+      const max = el.scrollHeight - el.clientHeight;
+      const next = max > 0 ? el.scrollTop / max : 0;
+      const delta = next - lastProgressRef.current;
+      scrollDepthRef.current = next;
+      lastProgressRef.current = next;
+      if (delta > 0.001) {
+        warpRef.current = 1;
+        warpUntilRef.current = performance.now() + 700;
+      }
+    };
+
+    el.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => el.removeEventListener('scroll', onScroll);
+  }, [scrollRef, scrollYProgress]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -38,35 +68,25 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
     const shouldRenderFrame = createFpsGate(perf.targetFps);
 
     const state = {
-      actualSpeed: 0.25,
-      targetSpeed: 0.25,
-      warpUntil: 0,
-      time: 0,
+      travel: 0,
+      rotation: 0,
       mouse: { x: 0, y: 0, active: false },
       smoothMouse: { x: 0, y: 0 },
-      rotation: 0,
     };
 
-    apiRef.current = {
-      triggerWarp: () => {
-        state.warpUntil = performance.now() + 900;
-        state.targetSpeed = 2.2;
-        state.actualSpeed = 2.2; // spike immediately
-      },
-    };
-
-    // Performance improvement: significantly reduced particle count for Canvas 2D fallback 
-    // to guarantee smooth 60fps even on weak integrated graphics.
     const particles = [];
-    for (let z = 0; z >= -TUNNEL_LENGTH; z -= 16) {
+    const ringPointCount = perf.lowPower ? 16 : 24;
+    const ringStep = perf.lowPower ? 20 : 16;
+    for (let z = 0; z >= -TUNNEL_LENGTH; z -= ringStep) {
       const rBase = 12 + Math.random() * 6;
-      for (let i = 0; i < 24; i++) {
-        const angle = (i / 24) * Math.PI * 2;
+      for (let i = 0; i < ringPointCount; i++) {
+        const angle = (i / ringPointCount) * Math.PI * 2;
         const r = rBase + (Math.random() - 0.5) * 1.5;
         particles.push({ r, angle, zBase: z, offset: 0 });
       }
     }
-    for (let i = 0; i < 300; i++) {
+    const scatterCount = perf.lowPower ? 120 : 200;
+    for (let i = 0; i < scatterCount; i++) {
       const r = Math.random() * 11;
       const angle = Math.random() * Math.PI * 2;
       const z = -Math.random() * TUNNEL_LENGTH;
@@ -90,7 +110,11 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
     let last = performance.now();
 
     const render = (now) => {
-      // FPS gate — skip frame if too soon
+      if (!shouldRenderGraphics()) {
+        raf = requestAnimationFrame(render);
+        return;
+      }
+
       if (!shouldRenderFrame(now)) {
         raf = requestAnimationFrame(render);
         return;
@@ -99,21 +123,30 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
       const delta = Math.min((now - last) / 1000, 0.05);
       last = now;
 
-      if (now > state.warpUntil) {
-        state.targetSpeed = 0.25;
-      }
-      state.actualSpeed = lerp(state.actualSpeed, state.targetSpeed, delta * 3.0);
-      const uWarp = Math.max(0, Math.min(1, (state.actualSpeed - 0.25) / (2.2 - 0.25)));
+      const scrollDepth = scrollDepthRef.current ?? 0;
 
-      state.time += delta * state.actualSpeed * 60.0;
-      state.rotation += delta * 0.002 * 60.0; // Slower rotation
+      if (now > warpUntilRef.current) {
+        warpRef.current = lerp(warpRef.current, 0, 0.08);
+      }
+
+      const scrollTravel = scrollDepth * TUNNEL_LENGTH * SCROLL_DEPTH_MULTIPLIER;
+      const warpBoost = warpRef.current * 120;
+      const targetTravel = scrollTravel + warpBoost;
+      state.travel = lerp(state.travel, targetTravel, 0.16);
+
+      if (scrollDepth < 0.02) {
+        state.travel += delta * 18;
+      }
+
+      state.rotation += delta * (0.002 + scrollDepth * 0.006) * 60;
 
       state.smoothMouse.x = lerp(state.smoothMouse.x, state.mouse.x, 0.05);
       state.smoothMouse.y = lerp(state.smoothMouse.y, state.mouse.y, 0.05);
       const mouseActive = state.mouse.active;
 
-      const shiftX = mouseActive ? (state.smoothMouse.x - w/2) * 0.8 : 0;
-      const shiftY = mouseActive ? (state.smoothMouse.y - h/2) * 0.8 : 0;
+      const depthSway = 1 - scrollDepth * 0.4;
+      const shiftX = mouseActive ? (state.smoothMouse.x - w / 2) * 0.8 * depthSway : 0;
+      const shiftY = mouseActive ? (state.smoothMouse.y - h / 2) * 0.8 * depthSway : 0;
 
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, w, h);
@@ -121,13 +154,14 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
 
       const cx = w / 2;
       const cy = h / 2;
+      const uWarp = warpRef.current;
 
-      particles.forEach(p => {
-        const traveled = mod(p.zBase + state.time + p.offset, TUNNEL_LENGTH) - TUNNEL_LENGTH * 0.5;
-        
-        if (traveled >= 8) return; 
+      particles.forEach((p) => {
+        const traveled = mod(p.zBase + state.travel + p.offset, TUNNEL_LENGTH) - TUNNEL_LENGTH * 0.5;
 
-        const zDist = 8 - traveled; 
+        if (traveled >= 8) return;
+
+        const zDist = 8 - traveled;
         if (zDist < 0.1) return;
 
         const vDepth = 1.0 - Math.abs(traveled) / (TUNNEL_LENGTH * 0.5);
@@ -142,13 +176,13 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
         const inner = { r: 230, g: 255, b: 248 };
         const outer = AURORA_RGB.mint;
         const edgeRgb = lerpAuroraRgb(inner, outer, vEdge);
-        const tint = uWarp * 0.5;
+        const tint = uWarp * 0.5 + scrollDepth * 0.25;
         const warpRgb = lerpAuroraRgb(edgeRgb, AURORA_RGB.violet, tint);
         const fr = warpRgb.r;
         const fg = warpRgb.g;
         const fb = warpRgb.b;
 
-        const scale = 300.0 / zDist;
+        const scale = (300 + scrollDepth * 80) / zDist;
         const size2d = Math.max(0.5, 3.5 * scale * 0.05);
         const alpha = vDepth * 0.9;
 
@@ -156,18 +190,14 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
         const screenX = cx - shiftX * depthFactor + px * scale;
         const screenY = cy - shiftY * depthFactor + py * scale;
 
-        // Early bounds check — skip off-screen particles
         if (screenX < -size2d || screenX > w + size2d || screenY < -size2d || screenY > h + size2d) return;
 
-        // Use simple filled circles with globalAlpha instead of radial gradients
-        // for massive CPU savings (eliminates ~1000+ gradient allocations/frame)
         ctx.globalAlpha = alpha * 0.85;
         ctx.fillStyle = `rgb(${fr}, ${fg}, ${fb})`;
         ctx.beginPath();
         ctx.arc(screenX, screenY, size2d, 0, Math.PI * 2);
         ctx.fill();
 
-        // Bright center dot
         if (size2d > 1) {
           ctx.globalAlpha = alpha * 0.6;
           ctx.fillStyle = '#fff';
@@ -177,23 +207,23 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
         }
       });
 
-      // RINGS (14 evenly spaced LineLoop rings from the shader)
-      ctx.strokeStyle = 'rgba(52, 180, 140, 0.22)';
+      const ringCount = perf.lowPower ? 8 : 14;
+      ctx.strokeStyle = `rgba(52, 180, 140, ${0.18 + scrollDepth * 0.12})`;
       ctx.lineWidth = 1;
-      for (let i = 0; i < 14; i++) {
-        const zOffset = (i / 14) * TUNNEL_LENGTH;
-        const ringZ = mod(zOffset + state.time, TUNNEL_LENGTH) - TUNNEL_LENGTH * 0.5;
-        
+      for (let i = 0; i < ringCount; i++) {
+        const zOffset = (i / ringCount) * TUNNEL_LENGTH;
+        const ringZ = mod(zOffset + state.travel, TUNNEL_LENGTH) - TUNNEL_LENGTH * 0.5;
+
         const zDist = 8 - ringZ;
         if (zDist < 0.1 || ringZ >= 8) continue;
-        
-        const scale = 300.0 / zDist;
+
+        const scale = (300 + scrollDepth * 80) / zDist;
         const radius2d = 14.0 * scale;
         const depthFactor = clamp(1.0 - zDist / (TUNNEL_LENGTH * 0.5), 0, 1);
-        
+
         const screenX = cx - shiftX * depthFactor;
         const screenY = cy - shiftY * depthFactor;
-        
+
         ctx.beginPath();
         ctx.arc(screenX, screenY, radius2d, 0, Math.PI * 2);
         ctx.stroke();
@@ -204,7 +234,6 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
       raf = requestAnimationFrame(render);
     };
 
-    const onScroll = () => apiRef.current?.triggerWarp();
     let mouseRaf = 0;
     let nextMouse = null;
     const onMouseMove = (e) => {
@@ -219,7 +248,6 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
     resize();
     window.addEventListener('resize', resize);
     window.addEventListener('mousemove', onMouseMove);
-    scrollRef?.current?.addEventListener('scroll', onScroll, { passive: true });
     raf = requestAnimationFrame(render);
 
     return () => {
@@ -227,9 +255,8 @@ export default function TunnelCanvas2D({ scrollRef, activeSectionId }) {
       if (mouseRaf) cancelAnimationFrame(mouseRaf);
       window.removeEventListener('resize', resize);
       window.removeEventListener('mousemove', onMouseMove);
-      scrollRef?.current?.removeEventListener('scroll', onScroll);
     };
-  }, [scrollRef]);
+  }, [scrollRef, scrollYProgress]);
 
   return (
     <canvas

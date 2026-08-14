@@ -1,7 +1,7 @@
 import { AnimatePresence, motion, useMotionValueEvent } from 'framer-motion';
 import { memo, useMemo, useState } from 'react';
 import { FaGithub, FaInstagram, FaLinkedinIn } from 'react-icons/fa6';
-import { SplineSceneBasic } from './ui/demo';
+import IntroHero from './IntroHero';
 
 const transition = {
   duration: 0.75,
@@ -53,7 +53,7 @@ const panels = [
     items: [
       {
         type: 'custom',
-        render: () => <SplineSceneBasic />,
+        render: () => <IntroHero />,
       },
     ],
   },

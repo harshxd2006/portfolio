@@ -23,10 +23,8 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
-          if (id.includes('@splinetool')) return 'spline';
           if (id.includes('three') || id.includes('@react-three')) return 'three-ecosystem';
           if (id.includes('framer-motion')) return 'framer';
-          if (id.includes('tone') || id.includes('standardized-audio-context')) return 'audio';
           if (id.includes('react-icons')) return 'icons';
           if (id.includes('react') || id.includes('scheduler')) return 'react-vendor';
           return 'vendor';
