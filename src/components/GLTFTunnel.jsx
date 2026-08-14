@@ -95,13 +95,15 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, travelRef }) {
   const instancedRingsRef = useRef();
   const perf = getGraphicsProfile();
   const dummyMat = useMemo(() => new THREE.Matrix4(), []);
+  const lastTravelRef = useRef(0);
+  const isIdleRef = useRef(false);
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
   const isLowPowerTier = perf.lowPower || isMobile || perf.isIntegratedGpu;
-  const ringCount = isLowPowerTier ? 6 : 12;
+  const ringCount = isLowPowerTier ? 5 : 12;
 
   const { tubeGeo, ringGeo } = useMemo(() => {
-    const segments = isLowPowerTier ? 14 : 24;
+    const segments = isLowPowerTier ? 12 : 24;
     const tube = new THREE.CylinderGeometry(
       TUNNEL_RADIUS,
       TUNNEL_RADIUS,
@@ -113,7 +115,7 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, travelRef }) {
     tube.rotateX(Math.PI / 2);
     tube.translate(0, 0, -TUNNEL_LENGTH * 0.65);
 
-    const torusSegments = isLowPowerTier ? 14 : 24;
+    const torusSegments = isLowPowerTier ? 12 : 24;
     const ring = new THREE.TorusGeometry(TUNNEL_RADIUS, 0.1, 4, torusSegments);
     ring.rotateX(Math.PI / 2);
 
@@ -157,6 +159,15 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, travelRef }) {
     if (scrollDepth < 0.02) {
       travelRef.current += delta * 2.5;
     }
+
+    const travelDelta = Math.abs(travelRef.current - lastTravelRef.current);
+    lastTravelRef.current = travelRef.current;
+
+    // Skip heavy matrix updates when camera and scroll are resting
+    if (travelDelta < 0.0001 && isIdleRef.current) {
+      return;
+    }
+    isIdleRef.current = travelDelta < 0.0001;
 
     linesTex.offset.y = travelRef.current * 0.015;
 
