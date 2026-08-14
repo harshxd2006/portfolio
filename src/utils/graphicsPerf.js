@@ -2,6 +2,28 @@
 
 let _cachedProfile = null;
 
+function detectIntegratedGpu() {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return true;
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    if (!debugInfo) return false;
+    const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL).toLowerCase();
+    return (
+      renderer.includes('intel') ||
+      renderer.includes('integrated') ||
+      renderer.includes('swiftshader') ||
+      renderer.includes('llvmpipe') ||
+      renderer.includes('software') ||
+      renderer.includes('basic render')
+    );
+  } catch (e) {
+    return false;
+  }
+}
+
 export function getGraphicsProfile() {
   if (_cachedProfile) return _cachedProfile;
 
@@ -11,15 +33,17 @@ export function getGraphicsProfile() {
   const isMobile =
     window.matchMedia('(max-width: 768px)').matches ||
     (window.matchMedia('(pointer: coarse)').matches && window.innerWidth <= 1024);
-  const lowPower = reducedMotion || cores <= 4 || lowMemory || isMobile;
+  const isIntegratedGpu = detectIntegratedGpu();
+  const lowPower = reducedMotion || cores <= 4 || lowMemory || isMobile || isIntegratedGpu;
 
   _cachedProfile = {
     reducedMotion,
     lowPower,
     isMobile,
-    /** Use Canvas 2D tunnel instead of WebGL — much lighter on phones/tablets. */
+    isIntegratedGpu,
+    /** Use Canvas 2D tunnel instead of WebGL — false to keep WebGL active */
     prefer2DTunnel: false,
-    pixelRatio: Math.min(window.devicePixelRatio || 1, lowPower ? 1 : 1.25),
+    pixelRatio: Math.min(window.devicePixelRatio || 1, lowPower ? 0.75 : 1.0),
     targetFps: lowPower ? 45 : 60,
     antialias: !lowPower,
     bloomScale: lowPower ? 0.3 : 0.4,

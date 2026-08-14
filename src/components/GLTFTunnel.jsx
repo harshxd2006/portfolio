@@ -10,19 +10,20 @@ const TUNNEL_LENGTH = 240;
 const TUNNEL_RADIUS = 12;
 const SCROLL_TRAVEL_RANGE = 380;
 
-function createProceduralTunnelTexture() {
+function createProceduralTunnelTexture(isLowPower) {
+  const size = isLowPower ? 384 : 512;
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = size;
+  canvas.height = size;
   const ctx = canvas.getContext('2d');
 
   ctx.fillStyle = '#02060a';
-  ctx.fillRect(0, 0, 512, 512);
+  ctx.fillRect(0, 0, size, size);
 
-  const numCols = 20;
-  const numRows = 48;
-  const colW = 512 / numCols;
-  const rowH = 512 / numRows;
+  const numCols = isLowPower ? 16 : 20;
+  const numRows = isLowPower ? 36 : 48;
+  const colW = size / numCols;
+  const rowH = size / numRows;
 
   // Render metallic panel shading
   for (let r = 0; r < numRows; r++) {
@@ -39,24 +40,24 @@ function createProceduralTunnelTexture() {
     const x = i * colW;
 
     ctx.strokeStyle = 'rgba(52, 255, 200, 0.45)';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, 512);
+    ctx.lineTo(x, size);
     ctx.stroke();
 
     ctx.strokeStyle = '#34ffa8';
-    ctx.lineWidth = 1.8;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, 512);
+    ctx.lineTo(x, size);
     ctx.stroke();
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = 0.8;
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x, 512);
+    ctx.lineTo(x, size);
     ctx.stroke();
   }
 
@@ -64,10 +65,10 @@ function createProceduralTunnelTexture() {
   for (let j = 0; j < numRows; j++) {
     const y = j * rowH;
     ctx.strokeStyle = 'rgba(52, 255, 180, 0.55)';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.2;
     ctx.beginPath();
     ctx.moveTo(0, y);
-    ctx.lineTo(512, y);
+    ctx.lineTo(size, y);
     ctx.stroke();
   }
 
@@ -96,10 +97,11 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, travelRef }) {
   const dummyMat = useMemo(() => new THREE.Matrix4(), []);
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
-  const ringCount = isMobile ? 8 : (perf.lowPower ? 10 : 14);
+  const isLowPowerTier = perf.lowPower || isMobile || perf.isIntegratedGpu;
+  const ringCount = isLowPowerTier ? 6 : 12;
 
   const { tubeGeo, ringGeo } = useMemo(() => {
-    const segments = isMobile ? 18 : (perf.lowPower ? 22 : 28);
+    const segments = isLowPowerTier ? 14 : 24;
     const tube = new THREE.CylinderGeometry(
       TUNNEL_RADIUS,
       TUNNEL_RADIUS,
@@ -111,12 +113,12 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, travelRef }) {
     tube.rotateX(Math.PI / 2);
     tube.translate(0, 0, -TUNNEL_LENGTH * 0.65);
 
-    const torusSegments = isMobile ? 18 : (perf.lowPower ? 22 : 28);
-    const ring = new THREE.TorusGeometry(TUNNEL_RADIUS, 0.1, 5, torusSegments);
+    const torusSegments = isLowPowerTier ? 14 : 24;
+    const ring = new THREE.TorusGeometry(TUNNEL_RADIUS, 0.1, 4, torusSegments);
     ring.rotateX(Math.PI / 2);
 
     return { tubeGeo: tube, ringGeo: ring };
-  }, [isMobile, perf.lowPower]);
+  }, [isLowPowerTier]);
 
   const tubeMat = useMemo(() => createLinesMaterial(linesTex), [linesTex]);
 
@@ -189,7 +191,10 @@ function AuroraTunnelTube({ linesTex, scrollDepthRef, travelRef }) {
 }
 
 function TunnelScene({ scrollDepthRef, travelRef }) {
-  const linesTex = useMemo(() => createProceduralTunnelTexture(), []);
+  const perf = getGraphicsProfile();
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 768;
+  const isLowPowerTier = perf.lowPower || isMobile || perf.isIntegratedGpu;
+  const linesTex = useMemo(() => createProceduralTunnelTexture(isLowPowerTier), [isLowPowerTier]);
   return (
     <AuroraTunnelTube
       linesTex={linesTex}
